@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - Controle de Gastos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .btn-registrar { background-color: #00e5ff; border: none; border-radius: 8px; color: #0b0711 !important; transition: all 0.2s; }
+        .btn-registrar:hover { background-color: #33f0ff !important; box-shadow: 0 0 12px rgba(0, 229, 255, 0.4); transform: translateY(-1px); }
+    </style>
+</head>
+<body style="background-color: #0b0711; color: white; font-family: 'Segoe UI', sans-serif; height: 100vh;" class="d-flex align-items-center justify-content-center">
+    <div class="p-4 mx-3 text-center" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px; width: 100%; max-width: 420px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
+        <h2 class="fw-bold mb-1">📝 Criar Conta</h2>
+        <p class="text-white-50 small mb-4">Escolha o seu usuário e configure o e-mail de segurança</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} small py-2 text-start border-0" style="border-radius: 8px;">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form action="/cadastro" method="POST">
+            <div class="mb-3 text-start">
+                <label class="form-label text-white-50 small fw-medium">Nome de Usuário</label>
+                <input type="text" name="username" class="form-control" placeholder="Ex: thiago_viana" required style="background-color: #1c0f35; border: 1px solid #3d1d6d; color: white; padding: 11px 14px; border-radius: 8px;">
+            </div>
+            <div class="mb-3 text-start">
+                <label class="form-label text-white-50 small fw-medium">E-mail (Apenas para recuperar senha)</label>
+                <input type="email" name="email" class="form-control" placeholder="nome@provedor.com" required style="background-color: #1c0f35; border: 1px solid #3d1d6d; color: white; padding: 11px 14px; border-radius: 8px;">
+            </div>
+            <div class="mb-4 text-start">
+                <label class="form-label text-white-50 small fw-medium">Senha</label>
+                <input type="password" name="senha" class="form-control" placeholder="Mínimo 6 caracteres" required style="background-color: #1c0f35; border: 1px solid #3d1d6d; color: white; padding: 11px 14px; border-radius: 8px;">
+            </div>
+            <button type="submit" class="btn btn-registrar fw-bold w-100 py-2.5 mb-3">Finalizar Cadastro</button>
+        </form>
+        <p class="small text-white-50 mb-0">Já possui uma conta? <a href="/login" style="color: #8a2be2; text-decoration: none; font-weight: 600;">Faça o login</a></p>
+    </div>
+</body>
+</html>

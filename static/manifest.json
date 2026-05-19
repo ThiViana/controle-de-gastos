@@ -1,0 +1,16 @@
+{
+    "name": "Controle Financeiro de Gastos",
+    "short_name": "Finanças",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0b0711",
+    "theme_color": "#0b0711",
+    "orientation": "portrait",
+    "icons": [
+      {
+        "src": "https://cdn-icons-png.flaticon.com/512/2489/2489756.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ]
+  }

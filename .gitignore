@@ -1,0 +1,14 @@
+# Ignorar o ambiente virtual local
+ambiente/
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Ignorar o banco de dados local com as suas senhas e testes
+instance/
+controle_gastos.db
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
