@@ -2,38 +2,40 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask_mail import Mail, Message
-from itsdangerous import URLSafeTimedSerializer
+from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timezone
 
 app = Flask(__name__)
 
 # --- CONFIGURAÇÕES DO SISTEMA ---
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'chave_secreta_super_protegida_123')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///controle_gastos.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# --- CONFIGURAÇÕES DE E-MAIL (PARA RECUPERAÇÃO DE CONTA) ---
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.environ.get('EMAIL_USER', 'seu_email@gmail.com')
-app.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_PASS', 'sua_senha_de_app_aqui')
-app.config['MAIL_DEFAULT_SENDER'] = app.config['MAIL_USERNAME']
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+banco_na_raiz = os.path.join(BASE_DIR, 'controle_gastos.db')
+banco_na_instance = os.path.join(BASE_DIR, 'instance', 'controle_gastos.db')
+
+if os.path.exists(banco_na_instance):
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{banco_na_instance}'
+elif os.path.exists(banco_na_raiz):
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{banco_na_raiz}'
+else:
+    pasta_instance = os.path.join(BASE_DIR, 'instance')
+    if not os.path.exists(pasta_instance):
+        os.makedirs(pasta_instance)
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(pasta_instance, "controle_gastos.db")}'
+
+app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'static', 'uploads')
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
 db = SQLAlchemy(app)
-mail = Mail(app)
-serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
-# --- SISTEMA DE LOGINS (FLASK-LOGIN) ---
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-login_manager.login_message = "Acesso restrito! Por favor, faça login."
-login_manager.login_message_category = "warning"
 
-# --- MODELOS DO BANCO DE DADOS ---
-
+# --- MODELOS BANCO DE DADOS ---
 class Usuario(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -41,270 +43,177 @@ class Usuario(UserMixin, db.Model):
     senha_hash = db.Column(db.String(200), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     forcar_troca_senha = db.Column(db.Boolean, default=False)
-    is_active_user = db.Column(db.Boolean, default=True) # True = Ativo, False = Bloqueado
-    transacoes = db.relationship('Transacao', backref='criador', lazy=True)
+    is_active_user = db.Column(db.Boolean, default=True)
+    nome_exibicao = db.Column(db.String(100), nullable=True)
+    foto_perfil = db.Column(db.String(200), nullable=True)
 
 class Transacao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     descricao = db.Column(db.String(100), nullable=False)
     valor = db.Column(db.Float, nullable=False)
-    data = db.Column(db.Date, default=datetime.utcnow)
-    tipo = db.Column(db.String(100), nullable=False) # 'Individual' ou 'Partilhado (Criador -> Parceiro)'
+    data = db.Column(db.Date, default=lambda: datetime.now(timezone.utc).date())
+    tipo = db.Column(db.String(100), nullable=False)
     frequencia = db.Column(db.String(50), nullable=False)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    parceiro_username = db.Column(db.String(50), nullable=True)
+    porcentagem_criador = db.Column(db.Float, default=50.0)
+    porcentagem_parceiro = db.Column(db.Float, default=50.0)
+    status_gasto = db.Column(db.String(20), default='Aprovado')
+    pago = db.Column(db.Boolean, default=False)
+    vencimento = db.Column(db.String(20), nullable=True)
+    obs_vencimento = db.Column(db.String(200), nullable=True)
+
+class SolicitacaoExclusao(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    transacao_id = db.Column(db.Integer, db.ForeignKey('transacao.id'), nullable=False)
+    solicitante_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    data_solicitacao = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 @login_manager.user_loader
 def load_user(user_id):
-    return Usuario.query.get(int(user_id))
+    return db.session.get(Usuario, int(user_id))
 
-# Inicialização automática do Banco e do Administrador Mestre
-with app.app_context():
-    db.create_all()
-    # Configuração do Administrador padrão do sistema
-    admin_existe = Usuario.query.filter_by(username='admin').first()
-    if not admin_existe:
-        senha_admin = generate_password_hash('admin1802')
-        novo_admin = Usuario(
-            username='admin', 
-            email_seguranca='tadsviana@gmail.com', 
-            senha_hash=senha_admin, 
-            is_admin=True,
-            is_active_user=True
-        )
-        db.session.add(novo_admin)
-        db.session.commit()
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
-# --- INTERCEPTADOR DE SENHA EXPIRADA ---
-@app.before_request
-def checar_forcar_troca_senha():
-    if current_user.is_authenticated and current_user.forcar_troca_senha:
-        if request.endpoint in ['forcar_redefinicao', 'logout', 'static']:
-            return
-        return redirect(url_for('forcar_redefinicao'))
+def obter_contadores_notificacoes():
+    if not current_user.is_authenticated: return 0
+    solicitacoes_criacao = Transacao.query.filter_by(parceiro_username=current_user.username, status_gasto='Pendente_Criacao').count()
+    id_transacoes_usuario = [t.id for t in Transacao.query.filter((Transacao.usuario_id == current_user.id) | (Transacao.parceiro_username == current_user.username)).all()]
+    solicitacoes_exclusao = SolicitacaoExclusao.query.filter(SolicitacaoExclusao.transacao_id.in_(id_transacoes_usuario if id_transacoes_usuario else [0]), SolicitacaoExclusao.solicitante_id != current_user.id).count()
+    return solicitacoes_criacao + solicitacoes_exclusao
 
-# --- ROTAS DE AUTENTICAÇÃO ---
-
-@app.route('/cadastro', methods=['GET', 'POST'])
-def cadastro():
-    if current_user.is_authenticated:
-        return redirect(url_for('home'))
-    if request.method == 'POST':
-        username = request.form['username'].strip().lower()
-        email = request.form['email'].strip().lower()
-        senha = request.form['senha'].strip()
-        
-        user_existe = Usuario.query.filter_by(username=username).first()
-        if user_existe:
-            flash('Este nome de usuário já está sendo usado.', 'danger')
-            return redirect(url_for('cadastro'))
-            
-        novo_usuario = Usuario(username=username, email_seguranca=email, senha_hash=generate_password_hash(senha))
-        db.session.add(novo_usuario)
-        db.session.commit()
-        
-        flash('Cadastro realizado com sucesso! Faça login abaixo.', 'success')
-        return redirect(url_for('login'))
-    return render_template('cadastro.html')
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('home'))
-    if request.method == 'POST':
-        username = request.form['username'].strip().lower()
-        senha = request.form['senha'].strip()
-        
-        user = Usuario.query.filter_by(username=username).first()
-        if user and check_password_hash(user.senha_hash, senha):
-            if not user.is_active_user:
-                flash('Sua conta foi bloqueada pelo administrador do sistema.', 'danger')
-                return redirect(url_for('login'))
-                
-            login_user(user, remember=True)
-            return redirect(url_for('home'))
-        else:
-            flash('Usuário ou senha incorretos.', 'danger')
-    return render_template('login.html')
-
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('login'))
-
-@app.route('/forcar-redefinicao', methods=['GET', 'POST'])
-@login_required
-def forcar_redefinicao():
-    if not current_user.forcar_troca_senha:
-        return redirect(url_for('home'))
-    if request.method == 'POST':
-        nova_senha = request.form['nova_senha'].strip()
-        current_user.senha_hash = generate_password_hash(nova_senha)
-        current_user.forcar_troca_senha = False
-        db.session.commit()
-        flash('Sua senha foi atualizada com sucesso! Acesso liberado.', 'success')
-        return redirect(url_for('home'))
-    return render_template('forcar_redefinicao.html')
-
-# --- RECUPERAÇÃO DE CONTA ---
-
-@app.route('/recuperar-senha', methods=['GET', 'POST'])
-def recuperar_senha():
-    if request.method == 'POST':
-        username = request.form['username'].strip().lower()
-        user = Usuario.query.filter_by(username=username).first()
-        
-        if user:
-            token = serializer.dumps(username, salt='recuperacao-de-senha-controle')
-            link_recuperacao = url_for('redefinir_senha_token', token=token, _external=True)
-            
-            msg = Message('Recuperação de Senha - Controle de Gastos', recipients=[user.email_seguranca])
-            msg.body = f'Para redefinir sua senha, clique no link a seguir (válido por 30 minutos):\n{link_recuperacao}'
-            try:
-                mail.send(msg)
-                flash('Um link de recuperação foi enviado para o e-mail de segurança cadastrado nesta conta.', 'success')
-            except:
-                flash('Erro ao enviar o e-mail. Verifique as configurações SMTP.', 'danger')
-        else:
-            flash('Se o usuário estiver cadastrado, um e-mail de recuperação será enviado.', 'success')
-    return render_template('recuperar_senha.html')
-
-@app.route('/redefinir-senha/<token>', methods=['GET', 'POST'])
-def redefinir_senha_token(token):
-    try:
-        username = serializer.loads(token, salt='recuperacao-de-senha-controle', max_age=1800)
-    except:
-        flash('O link de recuperação expirou ou é inválido!', 'danger')
-        return redirect(url_for('login'))
-        
-    if request.method == 'POST':
-        nova_senha = request.form['nova_senha'].strip()
-        user = Usuario.query.filter_by(username=username).first()
-        if user:
-            user.senha_hash = generate_password_hash(nova_senha)
-            user.forcar_troca_senha = False
-            db.session.commit()
-            flash('Senha redefinida com sucesso! Faça login.', 'success')
-            return redirect(url_for('login'))
-    return render_template('redefinir_senha.html')
-
-# --- ÁREA ADMINISTRATIVA ---
-
-@app.route('/admin/usuarios')
-@login_required
-def painel_admin():
-    if not current_user.is_admin:
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('home'))
-    usuarios = Usuario.query.all()
-    return render_template('admin_usuarios.html', usuarios=usuarios)
-
-@app.route('/admin/resetar/<int:user_id>')
-@login_required
-def admin_resetar_senha(user_id):
-    if not current_user.is_admin:
-        return redirect(url_for('home'))
-    user = Usuario.query.get_or_404(user_id)
-    user.senha_hash = generate_password_hash('123456')
-    user.forcar_troca_senha = True
-    db.session.commit()
-    flash(f'A senha de {user.username.capitalize()} foi resetada para "123456". Alteração obrigatória no próximo login!', 'info')
-    return redirect(url_for('painel_admin'))
-
-@app.route('/admin/bloquear/<int:user_id>')
-@login_required
-def admin_bloquear_usuario(user_id):
-    if not current_user.is_admin:
-        return redirect(url_for('home'))
-    user = Usuario.query.get_or_404(user_id)
-    if user.is_admin:
-        flash('Erro! Não é possível bloquear um administrador.', 'danger')
-        return redirect(url_for('painel_admin'))
-        
-    user.is_active_user = not user.is_active_user
-    db.session.commit()
-    status = "bloqueado" if not user.is_active_user else "desbloqueado"
-    flash(f'O usuário {user.username.capitalize()} foi {status} com sucesso!', 'info')
-    return redirect(url_for('painel_admin'))
-
-@app.route('/admin/excluir/<int:user_id>')
-@login_required
-def admin_excluir_usuario(user_id):
-    if not current_user.is_admin:
-        return redirect(url_for('home'))
-    user = Usuario.query.get_or_404(user_id)
-    if user.is_admin:
-        flash('Erro! Não é possível excluir o administrador mestre.', 'danger')
-        return redirect(url_for('painel_admin'))
-        
-    # Limpeza em cascata
-    Transacao.query.filter_by(usuario_id=user.id).delete()
-    db.session.delete(user)
-    db.session.commit()
-    flash(f'O usuário {user.username.capitalize()} e todos os seus gastos foram apagados.', 'success')
-    return redirect(url_for('painel_admin'))
-
-# --- DASHBOARD FINANCEIRO MENSAL PRIVADO ---
+# --- DASHBOARD PRINCIPAL ---
 @app.route('/')
 @login_required
 def home():
-    hoje = datetime.utcnow()
+    hoje = datetime.now(timezone.utc)
     mes_selecionado = request.args.get('mes', default=hoje.month, type=int)
     ano_selecionado = request.args.get('ano', default=hoje.year, type=int)
 
     todas_as_transacoes = Transacao.query.all()
-    modelos_fixos = [t for t in todas_as_transacoes if t.frequencia == 'Fixo']
-    transacoes_reais_do_mes = [t for t in todas_as_transacoes if t.data.month == mes_selecionado and t.data.year == ano_selecionado]
+    transacoes_reais_do_mes = [t for t in todas_as_transacoes if t.data.month == mes_selecionado and t.data.year == ano_selecionado and t.status_gasto == 'Aprovado']
 
-    # Processamento automático de custos fixos
-    clonou_algum = False
-    for modelo in modelos_fixos:
-        if modelo.data.month == mes_selecionado and modelo.data.year == ano_selecionado:
-            continue
-        ja_existe_neste_mes = any(t.descricao == modelo.descricao and t.tipo == modelo.tipo and t.usuario_id == modelo.usuario_id for t in transacoes_reais_do_mes)
-        if not ja_existe_neste_mes:
-            data_do_clone = datetime(ano_selecionado, mes_selecionado, 1)
-            novo_clone = Transacao(descricao=modelo.descricao, valor=modelo.valor, tipo=modelo.tipo, frequencia='Fixo', data=data_do_clone, usuario_id=modelo.usuario_id)
-            db.session.add(novo_clone)
-            clonou_algum = True
-
-    if clonou_algum:
-        db.session.commit()
-        todas_as_transacoes = Transacao.query.all()
-        transacoes_reais_do_mes = [t for t in todas_as_transacoes if t.data.month == mes_selecionado and t.data.year == ano_selecionado]
-
-    transacoes_partilhadas = []
-    transacoes_individuais = []
+    total_pago, total_a_pagar = 0.0, 0.0
+    cat_fixas, cat_variaveis = 0.0, 0.0
+    historico_recente, proximas_contas = [], []
 
     for t in transacoes_reais_do_mes:
+        valor_meu = 0.0
+        pertence = False
+
         if t.tipo == 'Individual' and t.usuario_id == current_user.id:
-            transacoes_individuais.append(t)
+            valor_meu = t.valor
+            pertence = True
         elif 'Partilhado (' in t.tipo:
             conteudo = t.tipo.replace('Partilhado (', '').replace(')', '')
-            criador_gasto, convidado_gasto = [nome.strip().lower() for nome in conteudo.split('->')]
-            
-            # Só exibe se o usuário logado fizer parte da dupla
-            if current_user.username == criador_gasto or current_user.username == convidado_gasto:
-                transacoes_partilhadas.append(t)
+            try:
+                criador, parceiro = [n.strip().lower() for n in conteudo.split('->')]
+            except:
+                continue
+            if current_user.username == criador:
+                valor_meu = t.valor * ((t.porcentagem_criador or 50.0) / 100)
+                pertence = True
+            elif current_user.username == parceiro:
+                valor_meu = t.valor * ((t.porcentagem_parceiro or 50.0) / 100)
+                pertence = True
 
-    resumo_individuais = sum(t.valor for t in transacoes_individuais)
-    resumo_partilhados = sum(t.valor for t in transacoes_partilhadas)
-    saldo_total = resumo_individuais + resumo_partilhados
-    
-    total_thiago = resumo_individuais if current_user.username == 'thiago' else 0.0
-    total_allan = resumo_individuais if current_user.username == 'allan' else 0.0
+        if pertence:
+            if t.pago:
+                total_pago += valor_meu
+            else:
+                total_a_pagar += valor_meu
+                if t.frequencia == 'Despesas Fixas':
+                    proximas_contas.append({'descricao': t.descricao, 'valor': valor_meu, 'vencimento': t.vencimento or 'Sem data'})
+            
+            if t.frequencia == 'Despesas Fixas': cat_fixas += valor_meu
+            else: cat_variaveis += valor_meu
+
+            historico_recente.append(t)
+
+    historico_recente = sorted(historico_recente, key=lambda x: x.id, reverse=True)[:5]
+    proximas_contas = sorted(proximas_contas, key=lambda x: x['vencimento'])[:5]
 
     nomes_meses = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
-    mes_nome = nomes_meses[mes_selecionado]
-    
+    nome_boas_vindas = current_user.nome_exibicao if current_user.nome_exibicao else current_user.username.capitalize()
+
     return render_template(
-        'index.html', 
-        transacoes_partilhadas=transacoes_partilhadas, transacoes_individuais=transacoes_individuais,
-        saldo_total=saldo_total, resumo_individuais=resumo_individuais, resumo_partilhados=resumo_partilhados,
-        total_thiago=total_thiago, total_allan=total_allan, mes_nome=mes_nome,
-        mes_atual=mes_selecionado, ano_atual=ano_selecionado, usuario_logado=current_user.username, e_admin=current_user.is_admin
+        'index.html', total_pago=total_pago, total_a_pagar=total_a_pagar,
+        cat_fixas=cat_fixas, cat_variaveis=cat_variaveis,
+        historico=historico_recente, proximas=proximas_contas,
+        mes_nome=nomes_meses[mes_selecionado], mes_atual=mes_selecionado, ano_atual=ano_selecionado,
+        usuario_logado=nome_boas_vindas, total_notificacoes=obter_contadores_notificacoes()
     )
-   
+
+# --- CENTRAL DE LISTAGEM DE DADOS (SUPORTA FIXAS, VARIAVEIS E RESUMO) ---
+@app.route('/despesas/<string:escopo>/<string:frequencia>')
+@login_required
+def listar_despesas(escopo, frequencia):
+    hoje = datetime.now(timezone.utc)
+    m = request.args.get('mes', default=hoje.month, type=int)
+    a = request.args.get('ano', default=hoje.year, type=int)
+    
+    t_geral, t_pago, t_aberto = 0.0, 0.0, 0.0
+    registros_processados = []
+    cache_nomes = {}
+
+    if escopo == "individuais":
+        if frequencia == "resumo":
+            lista = Transacao.query.filter(Transacao.usuario_id == current_user.id, Transacao.tipo == 'Individual', Transacao.status_gasto == 'Aprovado').all()
+        else:
+            freq_mapeada = "Despesas Fixas" if frequencia == "fixas" else "Despesas Variáveis"
+            lista = Transacao.query.filter_by(usuario_id=current_user.id, tipo='Individual', frequencia=freq_mapeada, status_gasto='Aprovado').all()
+            
+        lista_mes = [t for t in lista if t.data.month == m and t.data.year == a]
+        for t in lista_mes:
+            t_geral += t.valor
+            if t.pago: t_pago += t.valor
+            else: t_aberto += t.valor
+            registros_processados.append({'transacao': t})
+    else:
+        if frequencia == "resumo":
+            todas = Transacao.query.filter(Transacao.tipo.like('Partilhado (%'), Transacao.status_gasto == 'Aprovado').all()
+        else:
+            freq_mapeada = "Despesas Fixas" if frequencia == "fixas" else "Despesas Variáveis"
+            todas = Transacao.query.filter(Transacao.tipo.like('Partilhado (%'), Transacao.frequencia == freq_mapeada, Transacao.status_gasto == 'Aprovado').all()
+            
+        lista_mes = [t for t in todas if t.data.month == m and t.data.year == a]
+        
+        for t in lista_mes:
+            conteudo = t.tipo.replace('Partilhado (', '').replace(')', '')
+            try:
+                criador, parceiro = [n.strip().lower() for n in conteudo.split('->')]
+            except:
+                continue
+            
+            if current_user.username == criador or current_user.username == parceiro:
+                outro = parceiro if current_user.username == criador else criador
+                if outro not in cache_nomes:
+                    u = Usuario.query.filter_by(username=outro).first()
+                    cache_nomes[outro] = u.nome_exibicao if (u and u.nome_exibicao) else outro.capitalize()
+                    
+                minha_pct = t.porcentagem_criador if current_user.username == criador else t.porcentagem_parceiro
+                parceiro_pct = t.porcentagem_parceiro if current_user.username == criador else t.porcentagem_criador
+                
+                meu_valor = t.valor * (minha_pct / 100)
+                parceiro_valor = t.valor * (parceiro_pct / 100)
+                
+                t_geral += meu_valor
+                if t.pago: t_pago += meu_valor
+                else: t_aberto += meu_valor
+
+                registros_processados.append({
+                    'transacao': t, 'nome_parceiro': cache_nomes[outro],
+                    'minha_pct': minha_pct, 'parceiro_pct': parceiro_pct,
+                    'meu_valor': meu_valor, 'parceiro_valor': parceiro_valor
+                })
+
+    sub_txt = "Resumo Geral" if frequencia == "resumo" else ("Fixas" if frequencia == "fixas" else "Variáveis")
+    titulo_tela = f"Despesas Individuais - {sub_txt}" if escopo == "individuais" else f"Despesas Partilhadas - {sub_txt}"
+    
+    return render_template('visualizar_dados.html', titulo=titulo_tela, dados=registros_processados, escopo=escopo, freq=frequencia, t_geral=t_geral, t_pago=t_pago, t_aberto=t_aberto, total_notificacoes=obter_contadores_notificacoes())
+
+# --- ROTAS DE FLUXO ---
 @app.route('/criar', methods=['POST'])
 @login_required
 def criar():
@@ -312,52 +221,128 @@ def criar():
     valor = float(request.form['valor'])
     frequencia = request.form['frequencia']
     categoria = request.form['categoria']
+    vencimento = request.form['vencimento'] if frequencia == 'Despesas Fixas' else None
+    obs = request.form['obs_vencimento'] if frequencia == 'Despesas Fixas' else None
 
     if categoria == 'Individual':
-        tipo_final = 'Individual'
+        t = Transacao(descricao=descricao, valor=valor, tipo='Individual', frequencia=frequencia, usuario_id=current_user.id, vencimento=vencimento, obs_vencimento=obs)
+        db.session.add(t)
     else:
         parceiro = request.form['parceiro_username'].strip().lower()
-        parceiro_existe = Usuario.query.filter_by(username=parceiro).first()
-        
-        if not parceiro_existe:
-            flash(f'Erro! O usuário "{parceiro.capitalize()}" não existe no sistema.', 'danger')
+        pct_c = float(request.form['porcentagem_criador'])
+        pct_p = float(request.form['porcentagem_parceiro'])
+        p_existe = Usuario.query.filter_by(username=parceiro).first()
+        if not p_existe:
+            flash("Parceiro não encontrado.", "danger")
             return redirect(url_for('home'))
-        if parceiro == current_user.username:
-            flash('Erro! Não é possível partilhar uma conta consigo mesmo.', 'danger')
-            return redirect(url_for('home'))
-            
-        # Formatação automática com iniciais maiúsculas salva direto no banco para a listagem
-        tipo_final = f'Partilhado ({current_user.username.capitalize()} -> {parceiro_existe.username.capitalize()})'
-
-    transacao = Transacao(descricao=descricao, valor=valor, tipo=tipo_final, frequencia=frequencia, usuario_id=current_user.id)
-    db.session.add(transacao)
+        t = Transacao(descricao=descricao, valor=valor, tipo=f'Partilhado ({current_user.username.capitalize()} -> {p_existe.username.capitalize()})', frequencia=frequencia, usuario_id=current_user.id, parceiro_username=p_existe.username, porcentagem_criador=pct_c, porcentagem_parceiro=pct_p, status_gasto='Pendente_Criacao', vencimento=vencimento, obs_vencimento=obs)
+        db.session.add(t)
+        flash("Solicitação enviada ao parceiro!", "info")
     db.session.commit()
-    flash('Gasto registrado com sucesso!', 'success')
     return redirect(url_for('home'))
 
-@app.route('/deletar/<int:id>')
+@app.route('/pagar/<int:id>/<string:escopo>/<string:freq>')
 @login_required
-def deletar(id):
-    transacao = Transacao.query.get_or_404(id)
-    pode_deletar = False
-    
-    if transacao.usuario_id == current_user.id:
-        pode_deletar = True
-    elif 'Partilhado (' in transacao.tipo:
-        conteudo = transacao.tipo.replace('Partilhado (', '').replace(')', '')
-        nomes_envolvidos = [nome.strip().lower() for nome in conteudo.split('->')]
-        if current_user.username in nomes_envolvidos:
-            pode_deletar = True
-
-    if pode_deletar:
-        db.session.delete(transacao)
+def alternar_pagamento(id, escopo, freq):
+    t = Transacao.query.get_or_404(id)
+    if t.usuario_id == current_user.id or t.parceiro_username == current_user.username:
+        t.pago = not t.pago
         db.session.commit()
-        flash('Transação removida.', 'success')
+    return redirect(url_for('listar_despesas', escopo=escopo, frequencia=freq))
+
+@app.route('/deletar/<int:id>/<string:escopo>/<string:freq>')
+@login_required
+def deletar(id, escopo, freq):
+    t = Transacao.query.get_or_404(id)
+    if t.tipo == 'Individual' and t.usuario_id == current_user.id:
+        db.session.delete(t)
     else:
-        flash('Acesso negado para deletar este registro.', 'danger')
-        
-    return redirect(url_for('home'))
+        sol = SolicitacaoExclusao.query.filter_by(transacao_id=t.id).first()
+        if sol and sol.solicitante_id != current_user.id:
+            db.session.delete(sol)
+            db.session.delete(t)
+        else:
+            ns = SolicitacaoExclusao(transacao_id=t.id, solicitante_id=current_user.id)
+            db.session.add(ns)
+    db.session.commit()
+    return redirect(url_for('listar_despesas', escopo=escopo, frequencia=freq))
+
+# --- PERFIL ---
+@app.route('/perfil')
+@login_required
+def ver_perfil():
+    return render_template('perfil.html', total_notificacoes=obter_contadores_notificacoes())
+
+@app.route('/perfil/atualizar', methods=['POST'])
+@login_required
+def atualizar_perfil():
+    nome = request.form.get('nome_exibicao', '').strip()
+    if nome: current_user.nome_exibicao = nome
+    if 'foto_perfil' in request.files:
+        f = request.files['foto_perfil']
+        if f and f.filename != '' and allowed_file(f.filename):
+            ext = f.filename.rsplit('.', 1)[1].lower()
+            nome_f = f"user_{current_user.id}.{ext}"
+            f.save(os.path.join(app.config['UPLOAD_FOLDER'], nome_f))
+            current_user.foto_perfil = nome_f
+    db.session.commit()
+    flash("Perfil atualizado!", "success")
+    return redirect(url_for('ver_perfil'))
+
+@app.route('/perfil/senha', methods=['POST'])
+@login_required
+def alterar_senha():
+    antiga = request.form.get('senha_antiga')
+    nova = request.form.get('senha_nova')
+    if check_password_hash(current_user.senha_hash, antiga):
+        current_user.senha_hash = generate_password_hash(nova)
+        db.session.commit()
+        flash("Senha alterada com sucesso!", "success")
+    else:
+        flash("Senha anterior incorreta.", "danger")
+    return redirect(url_for('ver_perfil'))
+
+@app.route('/solicitacoes')
+@login_required
+def solicitacoes():
+    criacoes_pendentes = Transacao.query.filter_by(parceiro_username=current_user.username, status_gasto='Pendente_Criacao').all()
+    criacoes_com_nome = []
+    for c in criacoes_pendentes:
+        criador_user = db.session.get(Usuario, c.usuario_id)
+        nome_criador = criador_user.nome_exibicao if (criador_user and criador_user.nome_exibicao) else criador_user.username.capitalize()
+        criacoes_com_nome.append({'gasto': c, 'nome_criador': nome_criador})
+
+    id_transacoes_usuario = [t.id for t in Transacao.query.filter((Transacao.usuario_id == current_user.id) | (Transacao.parceiro_username == current_user.username)).all()]
+    exclusoes_pendentes = SolicitacaoExclusao.query.filter(SolicitacaoExclusao.transacao_id.in_(id_transacoes_usuario if id_transacoes_usuario else [0]), SolicitacaoExclusao.solicitante_id != current_user.id).all()
+    return render_template('solicitacoes.html', criacoes=criacoes_com_nome, exclusoes=exclusoes_pendentes, total_notificacoes=obter_contadores_notificacoes())
+
+@app.route('/solicitacao/criacao/<int:id>/<string:acao>')
+@login_required
+def gerenciar_criacao(id, acao):
+    t = Transacao.query.get_or_404(id)
+    if t.parceiro_username == current_user.username:
+        if acao == 'aceitar': t.status_gasto = 'Aprovado'
+        else: db.session.delete(t)
+        db.session.commit()
+    return redirect(url_for('solicitacoes'))
+
+@app.route('/solicitacao/exclusao/<int:id>/<string:acao>')
+@login_required
+def gerenciar_exclusao(id, acao):
+    solicitacao = SolicitacaoExclusao.query.get_or_404(id)
+    transacao = Transacao.query.get(solicitacao.transacao_id)
+    if acao == 'aceitar':
+        db.session.delete(solicitacao)
+        if transacao: db.session.delete(transacao)
+    else:
+        db.session.delete(solicitacao)
+    db.session.commit()
+    return redirect(url_for('solicitacoes'))
+
+def atualizar_banco_de_dados():
+    db.create_all()
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    with app.app_context():
+        atualizar_banco_de_dados()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

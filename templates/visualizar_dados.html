@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold m-0">📋 {{ titulo }}</h2>
+        <a href="/" class="btn btn-sm btn-outline-secondary px-3" style="border-radius: 7px;">Voltar ao Dashboard</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="p-3 rounded-3 bg-dark border border-secondary d-flex justify-content-between align-items-center">
+                <small class="text-white-50">Total da Categoria</small>
+                <h5 class="fw-bold mb-0 text-white">R$ {{ "%.2f"|format(t_geral) }}</h5>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="p-3 rounded-3 bg-dark border border-success d-flex justify-content-between align-items-center">
+                <small class="text-success">Total Pago</small>
+                <h5 class="fw-bold mb-0 text-success">R$ {{ "%.2f"|format(t_pago) }}</h5>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="p-3 rounded-3 bg-dark border border-warning d-flex justify-content-between align-items-center">
+                <small class="text-warning">Restante a Pagar</small>
+                <h5 class="fw-bold mb-0 text-warning">R$ {{ "%.2f"|format(t_aberto) }}</h5>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-2 mb-3 align-items-center">
+        <div class="col-md-6">
+            <input type="text" id="inputBusca" class="form-control text-white border-secondary" placeholder="🔍 Buscar por descrição..." style="background-color: #130924; border-radius: 7px;" onkeyup="filtrarTabela()">
+        </div>
+        <div class="col-md-3">
+            <select id="selectStatus" class="form-select text-white border-secondary" style="background-color: #130924; border-radius: 7px;" onchange="filtrarTabela()">
+                <option value="todos">Todos os Status</option>
+                <option value="pago">Apenas Pagos</option>
+                <option value="pendente">Apenas Pendentes</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="p-4 rounded-3" style="background-color: #130924; border: 1px solid #261342;">
+        <div class="table-responsive">
+            <table class="table align-middle table-dark table-hover mb-0" id="tabelaDados" style="--bs-table-bg: #130924;">
+                <thead>
+                    <tr class="text-muted" style="font-size: 0.9rem; border-bottom: 2px solid #261342;">
+                        <th style="width: 60px;" class="text-center">Status</th>
+                        <th>Descrição</th>
+                        {% if modo == "partilhado" %}
+                            <th>Parceiro</th>
+                            <th class="text-end">Minha Divisão (%)</th>
+                            <th class="text-end">Parte Dele (%)</th>
+                        {% else %}
+                            <th class="text-end">Quantia</th>
+                        {% endif %}
+                        {% if freq == "fixas" or freq == "resumo" %}
+                            <th class="text-center">Vencimento</th>
+                        {% endif %}
+                        <th style="width: 80px;" class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabela">
+                    {% if modo == "partilhado" %}
+                        {% for p in dados %}
+                        <tr class="item-tabela {% if p.transacao.pago %}gasto-pago{% else %}gasto-pendente{% endif %}" style="border-bottom: 1px solid #1c0f35;">
+                            <td class="text-center">
+                                <input type="checkbox" class="check-pago" {% if p.transacao.pago %}checked{% endif %} onclick="location.href='/pagar/{{ p.transacao.id }}/partilhado/{{ freq }}'">
+                            </td>
+                            <td class="col-busca fw-bold">
+                                {{ p.transacao.descricao }}
+                                {% if p.transacao.obs_vencimento %}
+                                    <div class="text-muted font-weight-normal small" style="font-size: 0.75rem;">📝 {{ p.transacao.obs_vencimento }}</div>
+                                {% endif %}
+                                <div class="text-muted font-weight-normal" style="font-size: 0.7rem;">Nota total: R$ {{ "%.2f"|format(p.transacao.valor) }}</div>
+                            </td>
+                            <td><span class="badge bg-info text-dark fw-bold">{{ p.nome_parceiro }}</span></td>
+                            <td class="text-end text-success fw-bold">R$ {{ "%.2f"|format(p.meu_valor) }} <small class="text-muted">({{ p.minha_pct }}%)</small></td>
+                            <td class="text-end text-white-50">R$ {{ "%.2f"|format(p.parceiro_valor) }} <small>({{ p.parceiro_pct }}%)</small></td>
+                            {% if freq == "fixas" or freq == "resumo" %}
+                                <td class="text-center"><span class="badge bg-secondary">{{ p.transacao.vencimento or 'Não definido' }}</span></td>
+                            {% endif %}
+                            <td class="text-center">
+                                <a href="/deletar/{{ p.transacao.id }}/partilhado/{{ freq }}" class="btn-deletar" onclick="return confirm('Solicitar exclusão conjunta?');">×</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        {% for p in dados %}
+                        <tr class="item-tabela {% if p.transacao.pago %}gasto-pago{% else %}gasto-pendente{% endif %}" style="border-bottom: 1px solid #1c0f35;">
+                            <td class="text-center">
+                                <input type="checkbox" class="check-pago" {% if p.transacao.pago %}checked{% endif %} onclick="location.href='/pagar/{{ p.transacao.id }}/individuais/{{ freq }}'">
+                            </td>
+                            <td class="col-busca fw-bold">
+                                {{ p.transacao.descricao }}
+                                {% if p.transacao.obs_vencimento %}
+                                    <div class="text-muted font-weight-normal small" style="font-size: 0.75rem;">📝 {{ p.transacao.obs_vencimento }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="text-end text-warning fw-bold">R$ {{ "%.2f"|format(p.transacao.valor) }}</td>
+                            {% if freq == "fixas" or freq == "resumo" %}
+                                <td class="text-center"><span class="badge bg-info text-dark fw-bold">{{ p.transacao.vencimento or 'A combinar' }}</span></td>
+                            {% endif %}
+                            <td class="text-center">
+                                <a href="/deletar/{{ p.transacao.id }}/individuais/{{ freq }}" class="btn-deletar">×</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center mt-3 text-white-50 small">
+            <span id="txtContagem">Exibindo registros</span>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary" disabled>Anterior</button>
+                <button class="btn btn-outline-secondary" disabled>Próximo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filtrarTabela() {
+        const busca = document.getElementById('inputBusca').value.toLowerCase();
+        const status = document.getElementById('selectStatus').value;
+        const linhas = document.getElementsByClassName('item-tabela');
+        let visiveis = 0;
+
+        for (let i = 0; i < linhas.length; i++) {
+            const txtDescricao = linhas[i].getElementsByClassName('col-busca')[0].textContent.toLowerCase();
+            const e_pago = linhas[i].classList.contains('gasto-pago');
+            
+            let m_busca = txtDescricao.includes(busca);
+            let m_status = (status === 'todos') || (status === 'pago' && e_pago) || (status === 'pendente' && !e_pago);
+
+            if (m_busca && m_status) {
+                linhas[i].style.display = "";
+                visiveis++;
+            } else {
+                linhas[i].style.display = "none";
+            }
+        }
+        document.getElementById('txtContagem').innerText = `Exibindo ${visiveis} de ${linhas.length} registros`;
+    }
+    
+    // Roda o filtro de forma segura após o carregamento completo dos elementos
+    document.addEventListener("DOMContentLoaded", function() {
+        filtrarTabela();
+    });
+</script>
+{% endblock %}

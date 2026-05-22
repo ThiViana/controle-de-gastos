@@ -1,231 +1,199 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Gastos</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#0b0711">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    
-    <style>
-        .btn-salvar { background-color: #8a2be2; border: none; border-radius: 8px; transition: all 0.2s; }
-        .btn-salvar:hover { background-color: #a044ff !important; box-shadow: 0 0 12px rgba(138, 43, 226, 0.5); transform: translateY(-1px); }
-        .btn-mes { background-color: #27144d; border: 1px solid #3d1d6d; border-radius: 8px; transition: all 0.2s; }
-        .btn-mes:hover { background-color: #1c0e39 !important; border-color: #5c2bb5 !important; }
-        .dropdown-item:hover { background-color: #3d1d6d !important; color: #ffffff !important; }
-        .btn-deletar { background-color: rgba(255, 118, 159, 0.1); color: #ff769f; border: 1px solid rgba(255, 118, 159, 0.3); padding: 2px 10px; border-radius: 6px; font-weight: bold; text-decoration: none; transition: all 0.2s; }
-        .btn-deletar:hover { background-color: rgba(255, 118, 159, 0.25) !important; color: #ff4f81 !important; border-color: rgba(255, 118, 159, 0.6) !important; }
-    </style>
-</head>
-<body style="background-color: #0b0711; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+{% extends 'base.html' %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <div class="container-fluid p-4">
-        
-        <div class="mb-5 d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div>
-                <h1 style="color: #ffffff; font-weight: 700;">💰 Painel de Controle de Gastos</h1>
-                <p class="text-white-50 mb-0">Olá, <strong style="color: #e2bbfd;">{{ usuario_logado|capitalize }}</strong>! Bem-vindo de volta.</p>
+<div class="container-fluid">
+    <div class="mb-5">
+        <h1 class="fw-bold mb-1">💰 Dashboard Financeiro</h1>
+        <p class="text-white-50">Bem-vindo, <span class="text-info fw-bold">{{ usuario_logado }}</span></p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-9">
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="p-4 rounded-4" style="background: linear-gradient(135deg, #0d3c33 0%, #11221f 100%); border: 1px solid #197c6a;">
+                        <span class="text-white-50 small fw-bold text-uppercase">Total Pago</span>
+                        <h2 class="fw-bold mt-2 mb-0" style="color: #26e6a4;">R$ {{ "%.2f"|format(total_pago) }}</h2>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-4 rounded-4" style="background: linear-gradient(135deg, #4d142b 0%, #220814 100%); border: 1px solid #7c1944;">
+                        <span class="text-white-50 small fw-bold text-uppercase">Total a Pagar</span>
+                        <h2 class="fw-bold mt-2 mb-0" style="color: #ff5c93;">R$ {{ "%.2f"|format(total_a_pagar) }}</h2>
+                    </div>
+                </div>
             </div>
-            <div class="d-flex gap-2">
-                {% if e_admin %}
-                <a href="/admin/usuarios" class="btn btn-sm btn-outline-warning fw-bold px-3 py-2" style="border-radius: 8px;">🛠️ Gerenciar Usuários</a>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-5">
+                    <div class="p-4 rounded-4 h-100" style="background-color: #130924; border: 1px solid #261342;">
+                        <h5 class="fw-bold mb-3 text-white-50 text-uppercase" style="font-size: 0.8rem;">📊 Categorias de Gastos</h5>
+                        <div style="max-height: 180px;" class="d-flex justify-content-center align-items-center">
+                            {% if cat_fixas > 0 or cat_variaveis > 0 %}
+                                <canvas id="graficoCategorias"></canvas>
+                            {% else %}
+                                <small class="text-muted mt-4">Nenhum dado financeiro para gerar o gráfico este mês.</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-7">
+                    <div class="p-4 rounded-4 h-100" style="background-color: #130924; border: 1px solid #261342;">
+                        <h5 class="fw-bold mb-3 text-white-50 text-uppercase" style="font-size: 0.8rem;">🗓️ Próximas Contas a Vencer</h5>
+                        {% if proximas %}
+                            <ul class="list-group list-group-flush bg-transparent">
+                                {% for item in proximas %}
+                                    <li class="list-group-item bg-transparent text-white border-secondary d-flex justify-content-between align-items-center px-0 py-2">
+                                        <div>
+                                            <span class="fw-bold d-block" style="font-size: 0.95rem;">{{ item.descricao }}</span>
+                                            <small class="badge bg-danger px-2 py-1" style="font-size: 0.7rem;">Vence: {{ item.vencimento }}</small>
+                                        </div>
+                                        <span class="text-white-50 fw-bold">R$ {{ "%.2f"|format(item.valor) }}</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="text-muted small mb-0 mt-4 text-center">Nenhuma conta fixa pendente de pagamento!</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 rounded-4" style="background-color: #130924; border: 1px solid #261342;">
+                <h5 class="fw-bold mb-3 text-white-50 text-uppercase" style="font-size: 0.8rem;">⏱️ Últimas Transações / Histórico Recente</h5>
+                {% if historico %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-sm table-borderless align-middle mb-0">
+                        <thead>
+                            <tr class="text-muted" style="font-size: 0.8rem; border-bottom: 1px solid #261342;">
+                                <th style="width: 100px;" class="text-center">Status</th>
+                                <th class="py-2">Descrição</th>
+                                <th>Frequência</th>
+                                <th class="text-end">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in historico %}
+                                <tr style="border-bottom: 1px solid #1c0f35;" class="{% if t.pago %}text-white-50{% endif %}">
+                                    <td class="text-center">
+                                        {% if t.pago %}
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.75rem; border-radius: 6px;">Pago</span>
+                                        {% else %}
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1" style="font-size: 0.75rem; border-radius: 6px;">Pendente</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="fw-bold py-2" style="font-size: 0.95rem;">
+                                        {% if t.pago %}<del class="text-muted">{{ t.descricao }}</del>{% else %}{{ t.descricao }}{% endif %}
+                                    </td>
+                                    <td><span class="badge bg-secondary" style="font-size: 0.7rem;">{{ t.frequencia }}</span></td>
+                                    <td class="text-end text-info fw-bold" style="font-size: 0.95rem;">R$ {{ "%.2f"|format(t.valor) }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <p class="text-muted small mb-0 text-center py-2">Nenhuma transação efetuada até o momento.</p>
                 {% endif %}
-                <a href="/logout" class="btn btn-sm btn-outline-danger fw-bold px-3 py-2" style="border-radius: 8px;">🚪 Sair</a>
             </div>
         </div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} small py-2 border-0 mb-4" style="border-radius: 8px;">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <div class="p-3 mb-4 d-flex justify-content-between align-middle" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px;">
-            <h4 class="mb-0 align-self-center" style="color: #c3b0ea; font-weight: 600;">
-                📅 Visualizando: <span style="color: #00e5ff;">{{ mes_nome }} / {{ ano_atual }}</span>
-            </h4>
-            
-            <div class="dropdown">
-                <button class="btn btn-sm text-white fw-bold px-3 py-2 btn-mes" type="button" data-bs-toggle="dropdown">🔍 Selecionar Mês</button>
-                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
-                    <li><a class="dropdown-item" href="/?mes=1&ano=2026">Janeiro</a></li>
-                    <li><a class="dropdown-item" href="/?mes=2&ano=2026">Fevereiro</a></li>
-                    <li><a class="dropdown-item" href="/?mes=3&ano=2026">Março</a></li>
-                    <li><a class="dropdown-item" href="/?mes=4&ano=2026">Abril</a></li>
-                    <li><a class="dropdown-item" href="/?mes=5&ano=2026">Maio</a></li>
-                    <li><a class="dropdown-item" href="/?mes=6&ano=2026">Junho</a></li>
-                    <li><a class="dropdown-item" href="/?mes=7&ano=2026">Julho</a></li>
-                    <li><a class="dropdown-item" href="/?mes=8&ano=2026">Agosto</a></li>
-                    <li><a class="dropdown-item" href="/?mes=9&ano=2026">Setembro</a></li>
-                    <li><a class="dropdown-item" href="/?mes=10&ano=2026">Outubro</a></li>
-                    <li><a class="dropdown-item" href="/?mes=11&ano=2026">Novembro</a></li>
-                    <li><a class="dropdown-item" href="/?mes=12&ano=2026">Dezembro</a></li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="row g-4">
-            <div class="col-md-9">
-                <div class="row g-3 mb-5">
-                    <div class="col-md-4">
-                        <div class="p-4 d-flex flex-column justify-content-center" style="background: linear-gradient(135deg, #27144d 0%, #110822 100%); border: 1px solid #3d1d6d; border-radius: 12px; min-height: 135px;">
-                            <span class="text-white-50 small fw-bold text-uppercase">Saldo Total Geral</span>
-                            <h2 class="fw-bold mt-2 mb-0" style="color: #e2bbfd;">R$ {{ "%.2f"|format(saldo_total) }}</h2>
-                        </div>
+        <div class="col-md-3">
+            <div class="p-4 rounded-4" style="background-color: #130924; border: 1px solid #261342;">
+                <h4 class="fw-bold mb-4" style="border-bottom: 1px solid #2a1545; padding-bottom: 10px; font-size: 1.25rem;">➕ Novo Gasto</h4>
+                <form action="/criar" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label text-white-50 small">Descrição</label>
+                        <input type="text" class="form-control text-white" name="descricao" required style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
                     </div>
-                    <div class="col-md-4">
-                        <div class="p-4" style="background: linear-gradient(135deg, #27144d 0%, #110822 100%); border: 1px solid #3d1d6d; border-radius: 12px; min-height: 135px;">
-                            <span class="text-white-50 small fw-bold text-uppercase">Meu Gasto Individual</span>
-                            <h2 class="fw-bold mt-2 mb-1" style="color: #ffca28;">R$ {{ "%.2f"|format(resumo_individuais) }}</h2>
-                            <div class="d-flex justify-content-between text-white-50 small border-top pt-2 mt-2" style="border-color: rgba(255,255,255,0.15) !important;">
-                                <span>Titular: <strong style="color: #ffffff;">{{ usuario_logado|capitalize }}</strong></span>
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label text-white-50 small">Valor</label>
+                        <input type="number" step="0.01" class="form-control text-white" name="valor" required style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
                     </div>
-                    <div class="col-md-4">
-                        <div class="p-4 d-flex flex-column justify-content-center" style="background: linear-gradient(135deg, #27144d 0%, #110822 100%); border: 1px solid #3d1d6d; border-radius: 12px; min-height: 135px;">
-                            <span class="text-white-50 small fw-bold text-uppercase">Gastos Partilhados Comigo</span>
-                            <h2 class="fw-bold mt-2 mb-0" style="color: #00e5ff;">R$ {{ "%.2f"|format(resumo_partilhados) }}</h2>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label text-white-50 small">Tipo de Gasto</label>
+                        <select class="form-select text-white" name="categoria" id="categoria" required onchange="toggleParceiroField()" style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
+                            <option value="Individual">Individual</option>
+                            <option value="Partilhado">Partilhado com alguém</option>
+                        </select>
                     </div>
-                </div>
 
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <div class="p-4" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px; height: 100%;">
-                            <h5 class="fw-bold mb-4" style="color: #00e5ff;">📊 Transações Partilhadas Diretas</h5>
-                            <div class="table-responsive">
-                                <table class="table align-middle" style="color: white; margin-bottom: 0;">
-                                    <thead>
-                                        <tr>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px;">Descrição</th>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px;">Valor</th>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px; text-align: center;">Vínculo</th>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px; text-align: center;">Ação</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for transacao in transacoes_partilhadas %}
-                                        <tr>
-                                            <td style="background-color: #130924; color: #e0d5f0; border-bottom: 1px solid #22113b; padding: 12px;">
-                                                {{ transacao.descricao }}
-                                                {% if transacao.frequencia == 'Fixo' %}
-                                                    <span class="badge bg-secondary text-uppercase" style="font-size: 0.65rem; margin-left: 5px; opacity: 0.6;">Fixo</span>
-                                                {% endif %}
-                                            </td>
-                                            <td style="background-color: #130924; color: #00e5ff; border-bottom: 1px solid #22113b; padding: 12px; font-weight: 700;">R$ {{ "%.2f"|format(transacao.valor) }}</td>
-                                            <td style="background-color: #130924; border-bottom: 1px solid #22113b; padding: 12px; text-align: center;">
-                                                <span class="badge" style="background-color: #1c103a; border: 1px solid #00e5ff; color: #00e5ff; font-size: 0.75rem;">
-                                                    {{ transacao.tipo.replace('Partilhado (', '').replace(')', '') }}
-                                                </span>
-                                            </td>
-                                            <td style="background-color: #130924; border-bottom: 1px solid #22113b; padding: 12px; text-align: center;">
-                                                <a href="/deletar/{{ transacao.id }}" class="btn-deletar">×</a>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
+                    <div class="mb-3 d-none" id="campo-parceiro">
+                        <label class="form-label text-warning small fw-bold">👤 Usuário do Parceiro</label>
+                        <input type="text" class="form-control mb-2 text-white" name="parceiro_username" id="parceiro_username" style="background-color: #22123f; border: 1px solid #ffca28;">
+                        <input type="number" class="form-control mb-2 text-white" name="porcentagem_criador" id="porcentagem_criador" value="50" oninput="ajustarPorcentagens(true)" placeholder="Minha %" style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
+                        <input type="number" class="form-control text-white" name="porcentagem_parceiro" id="porcentagem_parceiro" value="50" oninput="ajustarPorcentagens(false)" placeholder="Parte dele %" style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-white-50 small">Frequência</label>
+                        <select class="form-select text-white" name="frequencia" id="frequencia" onchange="toggleVencimentoField()" required style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
+                            <option value="Despesas Variáveis">Despesas Variáveis</option>
+                            <option value="Despesas Fixas">Despesas Fixas</option>
+                        </select>
+                    </div>
+
+                    <div class="p-2 border border-secondary rounded mb-4 d-none" id="secao-vencimento" style="background-color: #1a0d2e;">
+                        <div class="mb-2">
+                            <label class="form-label text-info small fw-bold">Dia de Vencimento</label>
+                            <input type="text" class="form-control form-control-sm text-white" name="vencimento" placeholder="Ex: Todo dia 10" style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
+                        </div>
+                        <div>
+                            <label class="form-label text-white-50 small">Observações</label>
+                            <input type="text" class="form-control form-control-sm text-white" name="obs_vencimento" placeholder="Ex: Débito automático" style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
                         </div>
                     </div>
 
-                    <div class="col-md-6">
-                        <div class="p-4" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px; height: 100%;">
-                            <h5 class="fw-bold mb-4" style="color: #ffca28;">👤 Minhas Transações Individuais</h5>
-                            <div class="table-responsive">
-                                <table class="table align-middle" style="color: white; margin-bottom: 0;">
-                                    <thead>
-                                        <tr>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px;">Descrição</th>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px;">Valor</th>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px; text-align: center;">Ação</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for transacao in transacoes_individuais %}
-                                        <tr>
-                                            <td style="background-color: #130924; color: #e0d5f0; border-bottom: 1px solid #22113b; padding: 12px;">
-                                                {{ transacao.descricao }}
-                                                {% if transacao.frequencia == 'Fixo' %}
-                                                    <span class="badge bg-secondary text-uppercase" style="font-size: 0.65rem; margin-left: 5px; opacity: 0.6;">Fixo</span>
-                                                {% endif %}
-                                            </td>
-                                            <td style="background-color: #130924; color: #ffca28; border-bottom: 1px solid #22113b; padding: 12px; font-weight: 700;">R$ {{ "%.2f"|format(transacao.valor) }}</td>
-                                            <td style="background-color: #130924; border-bottom: 1px solid #22113b; padding: 12px; text-align: center;">
-                                                <a href="/deletar/{{ transacao.id }}" class="btn-deletar">×</a>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-3">
-                <div class="p-4" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px;">
-                    <h4 class="fw-bold mb-4" style="color: white; border-bottom: 1px solid #2a1545; padding-bottom: 10px;">➕ Novo Gasto</h4>
-                    <form action="/criar" method="POST">
-                        <div class="mb-3">
-                            <label for="descricao" class="form-label text-white-50 small fw-medium">Descrição</label>
-                            <input type="text" class="form-control" name="descricao" id="descricao" placeholder="Ex: Mercado..." required style="background-color: #1c0f35; border: 1px solid #3d1d6d; color: #ffffff; padding: 10px 12px; border-radius: 8px;">
-                        </div>
-                        <div class="mb-3">
-                            <label for="valor" class="form-label text-white-50 small fw-medium">Valor</label>
-                            <input type="number" step="0.01" class="form-control" name="valor" id="valor" placeholder="R$ 0,00" required style="background-color: #1c0f35; border: 1px solid #3d1d6d; color: #ffffff; padding: 10px 12px; border-radius: 8px;">
-                        </div>
-                        <div class="mb-3">
-                            <label for="categoria" class="form-label text-white-50 small fw-medium">Tipo de Gasto</label>
-                            <select class="form-select" name="categoria" id="categoria" required onchange="toggleParceiroField()" style="background-color: #1c0f35; border: 1px solid #3d1d6d; color: #ffffff; padding: 10px 12px; border-radius: 8px;">
-                                <option value="Individual">Individual</option>
-                                <option value="Partilhado">Partilhado com alguém</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3 d-none" id="campo-parceiro">
-                            <label for="parceiro_username" class="form-label text-warning small fw-bold">👤 Usuário do Parceiro</label>
-                            <input type="text" class="form-control" name="parceiro_username" id="parceiro_username" placeholder="Digite o usuário exato" style="background-color: #22123f; border: 1px solid #ffca28; color: #ffffff; padding: 10px 12px; border-radius: 8px;">
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="frequencia" class="form-label text-white-50 small fw-medium">Frequência</label>
-                            <select class="form-select" name="frequencia" id="frequencia" required style="background-color: #1c0f35; border: 1px solid #3d1d6d; color: #ffffff; padding: 10px 12px; border-radius: 8px;">
-                                <option value="Variavel">Variável</option>
-                                <option value="Fixo">Fixo</option>
-                            </select>
-                        </div>
-                        <div class="d-grid">
-                            <button type="submit" class="btn fw-bold py-2 text-white btn-salvar">Salvar Transação</button>
-                        </div>
-                    </form>
-                </div>
+                    <button type="submit" class="btn fw-bold w-100 py-2 text-white btn-salvar">Salvar Transação</button>
+                </form>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function toggleParceiroField() {
-            var categoria = document.getElementById('categoria').value;
-            var campoParceiro = document.getElementById('campo-parceiro');
-            var inputParceiro = document.getElementById('parceiro_username');
-            if (categoria === 'Partilhado') {
-                campoParceiro.classList.remove('d-none');
-                inputParceiro.required = true;
-            } else {
-                campoParceiro.classList.add('d-none');
-                inputParceiro.required = false;
-                inputParceiro.value = '';
-            }
+<script>
+    function toggleParceiroField() {
+        var cat = document.getElementById('categoria').value;
+        document.getElementById('campo-parceiro').classList.toggle('d-none', cat !== 'Partilhado');
+    }
+    function toggleVencimentoField() {
+        var freq = document.getElementById('frequencia').value;
+        document.getElementById('secao-vencimento').classList.toggle('d-none', freq !== 'Despesas Fixas');
+    }
+    function ajustarPorcentagens(mudouCriador) {
+        var c = document.getElementById('porcentagem_criador');
+        var p = document.getElementById('porcentagem_parceiro');
+        if(mudouCriador) { p.value = 100 - parseFloat(c.value || 0); } 
+        else { c.value = 100 - parseFloat(p.value || 0); }
+    }
+
+    {% if cat_fixas > 0 or cat_variaveis > 0 %}
+    const ctx = document.getElementById('graficoCategorias').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Fixas', 'Variáveis'],
+            datasets: [{
+                data: [{{ cat_fixas }}, {{ cat_variaveis }}],
+                backgroundColor: ['#8a2be2', '#00e5ff'],
+                hoverOffset: 4,
+                borderWidth: 0
+            }]
+        },
+        options: {
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: { color: '#ffffff', font: { size: 11 } }
+                }
+            },
+            responsive: true,
+            maintainAspectRatio: false
         }
-    </script>
-</body>
-</html>
+    });
+    {% endif %}
+</script>
+{% endblock %}
