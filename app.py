@@ -15,7 +15,7 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 banco_na_raiz = os.path.join(BASE_DIR, 'controle_gastos.db')
 banco_na_instance = os.path.join(BASE_DIR, 'instance', 'controle_gastos.db')
 
-
+# Dá prioridade ao banco original na raiz para não perder dados em produção
 if os.path.exists(banco_na_raiz):
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{banco_na_raiz}'
 elif os.path.exists(banco_na_instance):
@@ -394,7 +394,7 @@ def atualizar_perfil():
             f.save(os.path.join(app.config['UPLOAD_FOLDER'], nome_f))
             current_user.foto_perfil = nome_f
     db.session.commit()
-    flash("Perfil updated!", "success")
+    flash("Perfil atualizado com sucesso!", "success")
     return redirect(url_for('ver_perfil'))
 
 @app.route('/perfil/senha', methods=['POST'])
@@ -402,7 +402,7 @@ def atualizar_perfil():
 def alterar_senha():
     antiga = request.form.get('senha_antiga')
     nova = request.form.get('senha_nova')
-    if check_password_hash(current_user.senha_hash, antigua):
+    if check_password_hash(current_user.senha_hash, antiga):
         current_user.senha_hash = generate_password_hash(nova)
         db.session.commit()
         flash("Senha alterada com sucesso!", "success")
@@ -459,7 +459,7 @@ def atualizar_banco_de_dados():
         )
         db.session.add(admin)
         db.session.commit()
-        print("Usuário Admin padrão criado! (username: admin / senha: admin123)")
+        print("Usuário Admin padrão criado! (username: admin / senha: admin1802)")
 
 if __name__ == '__main__':
     with app.app_context():
