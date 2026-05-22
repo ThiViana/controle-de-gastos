@@ -189,20 +189,19 @@ def alternar_bloqueio(id):
 
 
 # ==========================================
-# ROTA PRINCIPAL: DASHBOARD FINANCEIRO (MÊS A MÊS)
+# DASHBOARD PRINCIPAL (CORRIGIDA E INTEGRADA)
 # ==========================================
 @app.route('/')
 @login_required
 def home():
-    # 1. Filtros de Data (Mês selecionado vindo da URL, padrão é o mês atual)
-    mes_atual = datetime.now(timezone.utc).date().month
-    mes_selecionado = request.args.get('mes', default=mes_atual, type=int)
-    ano_atual = datetime.now(timezone.utc).date().year
+    # 1. Filtros de Data (Mês e Ano selecionados)
+    hoje = datetime.now(timezone.utc)
+    mes_selecionado = request.args.get('mes', default=hoje.month, type=int)
+    ano_atual = request.args.get('ano', default=hoje.year, type=int)
 
-    # 2. Busca os dados aprovados no Banco de Dados
+    # 2. Busca TODAS as transações aprovadas do usuário
     transacoes = Transacao.query.filter_by(status_gasto='Aprovado').all()
     
-    # 3. Inicializa todas as variáveis estruturais que a dashboard exige
     total_pago = 0.0
     total_a_pagar = 0.0
     cat_fixas = 0.0
@@ -210,7 +209,7 @@ def home():
     proximas = []
     historico = []
 
-    # 4. Processa as transações aplicando filtros e fatiamento de partilhas
+    # 3. Processa e filtra os dados respeitando a lógica do seu app.py original
     for t in transacoes:
         pertence = False
         valor_meu = 0.0
@@ -236,7 +235,7 @@ def home():
                     continue
             
             if pertence:
-                # Alimenta a lista de histórico recente estruturado
+                # Alimenta o histórico recente
                 historico.append({
                     'descricao': t.descricao,
                     'frequencia': t.frequencia,
@@ -244,7 +243,7 @@ def home():
                     'pago': t.pago
                 })
 
-                # Classificação de caixas de balanço (Pago vs Pendente)
+                # Separa os balanços
                 if t.pago:
                     total_pago += valor_meu
                 else:
@@ -256,16 +255,16 @@ def home():
                             'valor': valor_meu
                         })
 
-                # Agrupamento para montar o gráfico de pizza do Chart.js
+                # Soma os grupos do gráfico de pizza
                 if t.frequencia == 'Despesas Fixas':
                     cat_fixas += valor_meu
                 else:
                     cat_variaveis += valor_meu
 
-    # Define nome de exibição amigável para o cabeçalho
+    # Define o nome amigável para exibição
     nome_boas_vindas = current_user.nome_exibicao if current_user.nome_exibicao else current_user.username.capitalize()
 
-    # 5. Renderiza a Dashboard passando todas as chaves mapeadas com segurança
+    # 4. Envia os dados completos e injeta os contadores para destravar o avatar lateral
     return render_template('index.html', 
                            total_pago=total_pago, 
                            total_a_pagar=total_a_pagar,
@@ -419,7 +418,7 @@ def atualizar_perfil():
             f.save(os.path.join(app.config['UPLOAD_FOLDER'], nome_f))
             current_user.foto_perfil = nome_f
     db.session.commit()
-    flash("Perfil updated com sucesso!", "success")
+    flash("Perfil atualizado com sucesso!", "success")
     return redirect(url_for('ver_perfil'))
 
 @app.route('/perfil/senha', methods=['POST'])
@@ -427,7 +426,7 @@ def atualizar_perfil():
 def alterar_senha():
     antiga = request.form.get('senha_antiga')
     nova = request.form.get('senha_nova')
-    if check_password_hash(current_user.senha_hash, antigua):
+    if check_password_hash(current_user.senha_hash, antiga):
         current_user.senha_hash = generate_password_hash(nova)
         db.session.commit()
         flash("Senha alterada com sucesso!", "success")
