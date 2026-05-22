@@ -6,7 +6,6 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timezone
 
-
 app = Flask(__name__)
 
 # --- CONFIGURAÇÕES DO SISTEMA ---
@@ -190,22 +189,20 @@ def alternar_bloqueio(id):
 
 
 # ==========================================
-# DASHBOARD E OUTRAS ROTAS
+# ROTA PRINCIPAL: DASHBOARD FINANCEIRO (MÊS A MÊS)
 # ==========================================
 @app.route('/')
 @login_required
-@app.route('/')
-@login_required
 def home():
-    # 1. Filtros de Data (Mês selecionado)
+    # 1. Filtros de Data (Mês selecionado vindo da URL, padrão é o mês atual)
     mes_atual = datetime.now(timezone.utc).date().month
     mes_selecionado = request.args.get('mes', default=mes_atual, type=int)
     ano_atual = datetime.now(timezone.utc).date().year
 
-    # 2. Busca os dados no Banco
+    # 2. Busca os dados aprovados no Banco de Dados
     transacoes = Transacao.query.filter_by(status_gasto='Aprovado').all()
     
-    # 3. Inicializa todas as variáveis que o index.html exige
+    # 3. Inicializa todas as variáveis estruturais que a dashboard exige
     total_pago = 0.0
     total_a_pagar = 0.0
     cat_fixas = 0.0
@@ -213,12 +210,12 @@ def home():
     proximas = []
     historico = []
 
-    # 4. Processa as transações aplicando as regras do .lower()
+    # 4. Processa as transações aplicando filtros e fatiamento de partilhas
     for t in transacoes:
         pertence = False
         valor_meu = 0.0
         
-        # Filtra pela competência do mês/ano correto
+        # Regra de Competência: Despesas Variáveis entram no mês delas. Fixas entram todo mês.
         no_mes_correto = (t.data.month == mes_selecionado and t.data.year == ano_atual) or (t.frequencia == 'Despesas Fixas')
 
         if no_mes_correto:
@@ -239,7 +236,7 @@ def home():
                     continue
             
             if pertence:
-                # Alimenta a lista do histórico recente
+                # Alimenta a lista de histórico recente estruturado
                 historico.append({
                     'descricao': t.descricao,
                     'frequencia': t.frequencia,
@@ -247,7 +244,7 @@ def home():
                     'pago': t.pago
                 })
 
-                # Separa os montantes pagos e pendentes
+                # Classificação de caixas de balanço (Pago vs Pendente)
                 if t.pago:
                     total_pago += valor_meu
                 else:
@@ -255,25 +252,20 @@ def home():
                     if t.frequencia == 'Despesas Fixas':
                         proximas.append({
                             'descricao': t.descricao,
-                            'vencimento': 'Mensal',
+                            'vencimento': t.vencimento if t.vencimento else 'Mensal',
                             'valor': valor_meu
                         })
 
-                # Alimenta o gráfico de pizza
+                # Agrupamento para montar o gráfico de pizza do Chart.js
                 if t.frequencia == 'Despesas Fixas':
                     cat_fixas += valor_meu
                 else:
                     cat_variaveis += valor_meu
 
-    # 5. Cálculo dinâmico das Notificações (Resolve o Erro 500 do Jinja2)
-    # Busca solicitações pendentes onde o usuário atual não foi o solicitante
-    id_transacoes_usuario = [t.id for t in transacoes if t.usuario_id == current_user.id]
-    total_notificacoes = SolicitacaoExclusao.query.filter(
-        SolicitacaoExclusao.transacao_id.in_(id_transacoes_usuario if id_transacoes_usuario else [0]),
-        SolicitacaoExclusao.solicitante_id != current_user.id
-    ).count()
+    # Define nome de exibição amigável para o cabeçalho
+    nome_boas_vindas = current_user.nome_exibicao if current_user.nome_exibicao else current_user.username.capitalize()
 
-    # 6. Envia absolutamente tudo com segurança para o index.html
+    # 5. Renderiza a Dashboard passando todas as chaves mapeadas com segurança
     return render_template('index.html', 
                            total_pago=total_pago, 
                            total_a_pagar=total_a_pagar,
@@ -281,9 +273,14 @@ def home():
                            cat_variaveis=cat_variaveis,
                            proximas=proximas[:5], 
                            historico=historico[:5],
-                           usuario_logado=current_user.username.capitalize(),
+                           usuario_logado=nome_boas_vindas,
                            mes_selecionado=mes_selecionado,
-                           total_notificacoes=total_notificacoes)
+                           total_notificacoes=obter_contadores_notificacoes())
+
+
+# ==========================================
+# GESTÃO INDIVIDUAL / PARCERIAS DE DESPESAS
+# ==========================================
 @app.route('/despesas/<string:escopo>/<string:frequencia>')
 @login_required
 def listar_despesas(escopo, frequencia):
@@ -324,7 +321,6 @@ def listar_despesas(escopo, frequencia):
             except:
                 continue
             
-            # Ajuste de validação: ignorando maiúsculas e minúsculas para visualização
             if current_user.username.lower() == criador or current_user.username.lower() == parceiro:
                 outro = parceiro if current_user.username.lower() == criador else criador
                 if outro not in cache_nomes:
@@ -383,7 +379,6 @@ def criar():
 @login_required
 def alternar_pagamento(id, escopo, freq):
     t = Transacao.query.get_or_404(id)
-    # Validação case-insensitive
     if t.usuario_id == current_user.id or (t.parceiro_username and t.parceiro_username.lower() == current_user.username.lower()):
         t.pago = not t.pago
         db.session.commit()
@@ -424,7 +419,7 @@ def atualizar_perfil():
             f.save(os.path.join(app.config['UPLOAD_FOLDER'], nome_f))
             current_user.foto_perfil = nome_f
     db.session.commit()
-    flash("Perfil atualizado com sucesso!", "success")
+    flash("Perfil updated com sucesso!", "success")
     return redirect(url_for('ver_perfil'))
 
 @app.route('/perfil/senha', methods=['POST'])
@@ -432,7 +427,7 @@ def atualizar_perfil():
 def alterar_senha():
     antiga = request.form.get('senha_antiga')
     nova = request.form.get('senha_nova')
-    if check_password_hash(current_user.senha_hash, antiga):
+    if check_password_hash(current_user.senha_hash, antigua):
         current_user.senha_hash = generate_password_hash(nova)
         db.session.commit()
         flash("Senha alterada com sucesso!", "success")
