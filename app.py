@@ -83,6 +83,12 @@ def obter_contadores_notificacoes():
     solicitacoes_exclusao = SolicitacaoExclusao.query.filter(SolicitacaoExclusao.transacao_id.in_(id_transacoes_usuario if id_transacoes_usuario else [0]), SolicitacaoExclusao.solicitante_id != current_user.id).count()
     return solicitacoes_criacao + solicitacoes_exclusao
 
+
+# --- ROTA DE LOGIN CORRETIVA ---
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    return render_template('login.html')
+
 # --- DASHBOARD PRINCIPAL ---
 @app.route('/')
 @login_required
