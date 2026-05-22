@@ -485,6 +485,67 @@ def atualizar_banco_de_dados():
         db.session.commit()
         print("Usuário Admin padrão criado! (username: admin / senha: admin1802)")
 
+# ==========================================
+# ROTA DE CADASTRO (Colocar abaixo da rota de Login)
+# ==========================================
+@app.route('/cadastro', methods=['GET', 'POST'])
+def cadastro():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+        
+    if request.method == 'POST':
+        username = request.form.get('username').strip().lower()
+        email = request.form.get('email').strip()
+        senha = request.form.get('senha')
+        nome_exibicao = request.form.get('nome_exibicao').strip()
+        
+        usuario_existe = Usuario.query.filter_by(username=username).first()
+        if usuario_existe:
+            flash('Este nome de usuário já está em uso.', 'danger')
+            return redirect(url_for('cadastro'))
+            
+        senha_criptografada = generate_password_hash(senha)
+        novo_usuario = Usuario(
+            username=username,
+            email_seguranca=email,
+            senha_hash=senha_criptografada,
+            nome_exibicao=nome_exibicao if nome_exibicao else None,
+            is_admin=False,
+            is_active_user=True
+        )
+        
+        db.session.add(novo_usuario)
+        db.session.commit()
+        
+        flash('Conta criada com sucesso! Faça login para entrar.', 'success')
+        return redirect(url_for('login'))
+        
+    return render_template('cadastro.html')
+
+# ==========================================
+# ROTA DE RECOVERY (Colocar abaixo do cadastro ou logout)
+# ==========================================
+@app.route('/esqueci-senha', methods=['GET', 'POST'])
+def esqueci_senha():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+        
+    if request.method == 'POST':
+        username = request.form.get('username').strip()
+        email = request.form.get('email').strip()
+        
+        usuario = Usuario.query.filter_by(username=username, email_seguranca=email).first()
+        
+        if usuario:
+            usuario.forcar_troca_senha = True
+            db.session.commit()
+            flash('Solicitação enviada! Peça ao Administrador para redefinir sua senha no painel.', 'info')
+            return redirect(url_for('login'))
+        else:
+            flash('Usuário e e-mail de segurança não conferem.', 'danger')
+            
+    return render_template('esqueci_senha.html')
+
 if __name__ == '__main__':
     with app.app_context():
         atualizar_banco_de_dados()

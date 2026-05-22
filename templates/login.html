@@ -3,94 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Controle de Gastos</title>
+    <title>Login - Dashboard Financeiro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { 
-            background-color: #0b0711; 
-            color: white; 
-            font-family: 'Segoe UI', sans-serif; 
-            height: 100vh; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
+        :root {
+            --bg-color: #0b0711;
+            --card-bg: #130924;
+            --border-color: #261342;
+            --primary-purple: #8b5cf6;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
             margin: 0;
         }
-        .login-card { 
-            background-color: #130924; 
-            border: 1px solid #261342; 
-            border-radius: 12px; 
-            padding: 40px; 
-            width: 100%; 
-            max-width: 400px; 
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5); 
+        .login-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
-        .form-control { 
-            background-color: #0b0711; 
-            border: 1px solid #3d1d6d; 
-            color: white; 
+        .form-control {
+            background-color: #0b0711;
+            border: 1px solid var(--border-color);
+            color: white;
         }
-        .form-control:focus { 
-            background-color: #0b0711; 
-            border-color: #b39ddb; 
-            color: white; 
-            box-shadow: 0 0 0 0.25rem rgba(179, 157, 219, 0.25); 
+        .form-control:focus {
+            background-color: #0b0711;
+            border-color: var(--primary-purple);
+            color: white;
+            box-shadow: none;
         }
-        /* Corrigindo o placeholder para ficar legível no fundo escuro */
-        .form-control::placeholder {
-            color: rgba(255, 255, 255, 0.3);
+        .btn-purple {
+            background-color: var(--primary-purple);
+            color: white;
+            font-weight: bold;
+            border: none;
+            transition: 0.2s;
         }
-        .btn-login { 
-            background-color: #27144d; 
-            border: 1px solid #3d1d6d;
-            color: white; 
-            transition: all 0.2s ease-in-out; 
-        }
-        .btn-login:hover { 
-            background-color: #3d1d6d; 
-            color: white; 
-            transform: translateY(-2px); 
-            box-shadow: 0 0 8px rgba(179, 157, 219, 0.4);
+        .btn-purple:hover {
+            background-color: #7c3aed;
+            transform: translateY(-1px);
         }
     </style>
 </head>
 <body>
 
     <div class="login-card">
-        <div class="text-center mb-4">
-            <h2 class="fw-bold" style="color: #e0d5f0;">Controle de Gastos</h2>
-            <p style="color: rgba(255,255,255,0.6); font-size: 0.9rem;">Faça login para acessar o sistema</p>
-        </div>
+        <h4 class="fw-bold mb-4 text-center">🔑 Entrar no Sistema</h4>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    {% set bs_category = 'danger' if category == 'error' else category %}
-                    <div class="alert alert-{{ bs_category }} alert-dismissible fade show small py-2" role="alert" style="border-radius: 8px;">
+                    <div class="alert alert-{{ category }} small py-2 text-center" style="background-color: #0b0711; color: white; border-color: var(--border-color);">
                         {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="font-size: 0.7rem;"></button>
                     </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="/login">
+        <form action="{{ url_for('login') }}" method="POST">
             <div class="mb-3">
-                <label class="form-label text-white-50 small fw-bold">Usuário</label>
-                <input type="text" name="username" class="form-control" required placeholder="Digite seu usuário">
+                <label class="form-label small text-white-50">Username</label>
+                <input type="text" name="username" class="form-control" required placeholder="Seu usuário">
             </div>
-            
             <div class="mb-4">
-                <label class="form-label text-white-50 small fw-bold">Senha</label>
-                <input type="password" name="senha" class="form-control" required placeholder="Digite sua senha">
+                <label class="form-label small text-white-50">Senha</label>
+                <input type="password" name="senha" class="form-control" required placeholder="Sua senha">
             </div>
             
-            <button type="submit" class="btn btn-login w-100 py-2 fw-bold" style="border-radius: 8px;">
-                Entrar no Sistema
-            </button>
+            <button type="submit" class="btn btn-purple w-100 py-2 mb-2">Entrar</button>
+            
+            <div class="text-center d-flex justify-content-between mt-3 px-1">
+                <a href="{{ url_for('esqueci_senha') }}" class="small text-white-50" style="text-decoration: none;">Esqueci a senha</a>
+                <a href="{{ url_for('cadastro') }}" class="small" style="color: #8b5cf6; text-decoration: none; font-weight: bold;">Criar Conta</a>
+            </div>
         </form>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

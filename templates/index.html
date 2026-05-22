@@ -41,7 +41,7 @@
             z-index: 1000;
         }
 
-        /* COMPUTADOR: Expansão nativa por passar a seta (Hover) */
+        /* COMPUTADOR: Hover nativo */
         @media (min-width: 992px) {
             .sidebar:hover {
                 width: 260px;
@@ -54,7 +54,7 @@
             }
         }
 
-        /* DISPOSITIVOS MÓVEIS OU SUPORTE A TOQUE: Expansão via Classe JavaScript */
+        /* MOBILE/TOQUE: Expansão */
         .sidebar.expanded {
             width: 260px !important;
         }
@@ -127,7 +127,6 @@
             display: none;
         }
 
-        /* --- SUBMENU PERFEITO (FIXA, VARIÁVEL, RESUMO) --- */
         .submenu {
             display: none;
             padding-left: 55px;
@@ -155,7 +154,6 @@
             border-radius: 50%;
         }
 
-        /* --- CONTEÚDO PRINCIPAL --- */
         .main-content {
             margin-left: 75px; 
             padding: 40px;
@@ -167,7 +165,6 @@
         .left-column { flex: 1; }
         .right-column { width: 350px; }
 
-        /* --- CARDS --- */
         .dashboard-card {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
@@ -175,19 +172,11 @@
             padding: 20px;
             margin-bottom: 20px;
         }
-        .card-pago {
-            background-color: #142e22;
-            border-color: #1f4734;
-        }
+        .card-pago { background-color: #142e22; border-color: #1f4734; }
         .card-pago h4 { color: #4ade80; font-weight: bold; }
-        
-        .card-apagar {
-            background-color: #3f1425;
-            border-color: #5e1d35;
-        }
+        .card-apagar { background-color: #3f1425; border-color: #5e1d35; }
         .card-apagar h4 { color: #fb7185; font-weight: bold; }
 
-        /* --- FORMULÁRIO --- */
         .form-control, .form-select {
             background-color: #0b0711;
             border: 1px solid var(--border-color);
@@ -211,18 +200,16 @@
             transform: translateY(-2px);
         }
 
-        /* --- RESPONSIVIDADE SMARTPHONE --- */
         @media (max-width: 991px) {
             .main-content {
                 flex-direction: column;
                 padding: 20px;
-                margin-left: 75px; /* Mantém o alinhamento perfeito com os ícones da barra lateral */
+                margin-left: 75px;
                 width: calc(100% - 75px);
                 gap: 15px;
             }
-            .sidebar:hover {
-                width: 75px; /* Desativa o hover nativo no mobile para evitar conflito de toque */
-            }
+            .sidebar:hover { width: 75px; }
+            .right-column { width: 100%; }
         }
     </style>
 </head>
@@ -293,16 +280,12 @@
     </nav>
 
     <main class="main-content">
-        
         <div class="left-column">
             <div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
                 <div>
-                    <h1 class="fw-bold d-flex align-items-center gap-2 mb-0">
-                        💰 Dashboard Financeiro
-                    </h1>
+                    <h1 class="fw-bold d-flex align-items-center gap-2 mb-0">💰 Dashboard Financeiro</h1>
                     <p class="text-white-50 mb-0">Bem-vindo, <span style="color: #38bdf8; font-weight: bold;">{{ usuario_logado }}</span></p>
                 </div>
-                
                 <div>
                     <select class="form-select bg-dark text-white border-secondary" style="min-width: 160px;" onchange="location = this.value;">
                         <option value="?mes=1" {% if mes_selecionado == 1 %}selected{% endif %}>Janeiro</option>
@@ -368,44 +351,25 @@
                             {% endfor %}
                             </ul>
                         {% else %}
-                            <p class="text-muted small text-center my-4">Nenhuma conta fixa pendente de pagamento!</p>
+                            <p class="text-muted small text-center my-4">Nenhuma conta fixa pendente!</p>
                         {% endif %}
                     </div>
                 </div>
-            </div>
-
-            <div class="dashboard-card mt-3">
-                <small class="text-white-50 fw-bold d-block mb-3">⏱️ ÚLTIMAS TRANSAÇÕES / HISTÓRICO RECENTE</small>
-                {% if historico %}
-                    <ul class="list-unstyled small mb-0">
-                    {% for h in historico %}
-                        <li class="d-flex justify-content-between mb-2">
-                            <span>{{ h.descricao }} ({{ h.frequencia }})</span>
-                            <span class="{% if h.pago %}text-success{% else %}text-danger{% endif %}">R$ {{ "%.2f"|format(h.valor) }}</span>
-                        </li>
-                    {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="text-muted small text-center my-3">Nenhuma transação efetuada até o momento.</p>
-                {% endif %}
             </div>
         </div>
 
         <div class="right-column">
             <div class="dashboard-card">
                 <h5 class="fw-bold mb-4">➕ Novo Gasto</h5>
-                
                 <form action="{{ url_for('criar') }}" method="POST">
                     <div class="mb-3">
                         <label class="form-label small text-white-50">Descrição</label>
                         <input type="text" name="descricao" class="form-control" required>
                     </div>
-                    
                     <div class="mb-3">
                         <label class="form-label small text-white-50">Valor</label>
                         <input type="number" step="0.01" name="valor" class="form-control" required>
                     </div>
-                    
                     <div class="mb-3">
                         <label class="form-label small text-white-50">Tipo de Gasto</label>
                         <select name="categoria" class="form-select" id="tipoSelect" onchange="toggleParceiro()">
@@ -413,7 +377,6 @@
                             <option value="Partilhado">Partilhado</option>
                         </select>
                     </div>
-
                     <div id="divParceiro" style="display: none;" class="mb-3 p-3 border rounded border-secondary">
                         <label class="form-label small text-white-50">Username do Parceiro</label>
                         <input type="text" name="parceiro_username" class="form-control mb-2" placeholder="Ex: maria">
@@ -422,7 +385,6 @@
                         <label class="form-label small text-white-50">Porcentagem Parceiro (%)</label>
                         <input type="number" name="porcentagem_parceiro" class="form-control" value="50">
                     </div>
-                    
                     <div class="mb-4">
                         <label class="form-label small text-white-50">Frequência</label>
                         <select name="frequencia" class="form-select" id="freqSelect" onchange="toggleVencimento()">
@@ -430,42 +392,29 @@
                             <option value="Despesas Fixas">Despesas Fixas</option>
                         </select>
                     </div>
-
                     <div id="divVencimento" style="display: none;" class="mb-4 p-3 border rounded border-secondary">
                         <div class="mb-3">
                             <label class="form-label small" style="color: #38bdf8; font-weight: bold;">Dia de Vencimento</label>
                             <input type="text" name="vencimento" class="form-control" placeholder="Ex: Todo dia 10">
                         </div>
-                        <div>
-                            <label class="form-label small text-white-50">Observações</label>
-                            <input type="text" name="obs_vencimento" class="form-control" placeholder="Ex: Débito automático">
-                        </div>
                     </div>
-                    
                     <button type="submit" class="btn btn-purple w-100 py-2">Salvar Transação</button>
                 </form>
             </div>
         </div>
-        
     </main>
 
     <script>
         function handleSidebarClick(event) {
-            // Se estiver no mobile/tablet, o toque na barra lateral controla a expansão
             if (window.innerWidth <= 991) {
                 event.stopPropagation();
                 document.getElementById("appSidebar").classList.toggle("expanded");
             }
         }
-
-        // Remove a expansão se clicar em qualquer lugar fora da sidebar
         document.addEventListener("click", function(event) {
             var sidebar = document.getElementById("appSidebar");
-            if (!sidebar.contains(event.target)) {
-                sidebar.classList.remove("expanded");
-            }
+            if (!sidebar.contains(event.target)) { sidebar.classList.remove("expanded"); }
         });
-
         function toggleParceiro() {
             var tipo = document.getElementById("tipoSelect").value;
             document.getElementById("divParceiro").style.display = (tipo === "Partilhado") ? "block" : "none";
@@ -474,36 +423,20 @@
             var freq = document.getElementById("freqSelect").value;
             document.getElementById("divVencimento").style.display = (freq === "Despesas Fixas") ? "block" : "none";
         }
-
         document.addEventListener("DOMContentLoaded", function() {
             var ctx = document.getElementById('graficoCategorias').getContext('2d');
-            var fixas = parseFloat("{{ cat_fixas }}") || 0;
-            var variaveis = parseFloat("{{ cat_variaveis }}") || 0;
-
             var meuGrafico = new Chart(ctx, {
                 type: 'pie',
                 data: {
                     labels: ['Fixas', 'Variáveis'],
                     datasets: [{
-                        data: [fixas, variaveis],
+                        data: [parseFloat("{{ cat_fixas }}") || 0, parseFloat("{{ cat_variaveis }}") || 0],
                         backgroundColor: ['#8b5cf6', '#38bdf8'],
                         borderColor: '#130924',
                         borderWidth: 2
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: '#ffffff',
-                                font: { size: 12, family: 'Segoe UI' }
-                            }
-                        }
-                    }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#ffffff' } } } }
             });
         });
     </script>
