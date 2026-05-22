@@ -34,6 +34,8 @@ db = SQLAlchemy(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+login_manager.login_message = "Por favor, faça login para acessar esta página."
+login_manager.login_message_category = "info"
 
 # --- MODELOS BANCO DE DADOS ---
 class Usuario(UserMixin, db.Model):
@@ -83,13 +85,115 @@ def obter_contadores_notificacoes():
     solicitacoes_exclusao = SolicitacaoExclusao.query.filter(SolicitacaoExclusao.transacao_id.in_(id_transacoes_usuario if id_transacoes_usuario else [0]), SolicitacaoExclusao.solicitante_id != current_user.id).count()
     return solicitacoes_criacao + solicitacoes_exclusao
 
-
-# --- ROTA DE LOGIN CORRETIVA ---
+# ==========================================
+# ROTAS DE AUTENTICAÇÃO (LOGIN / LOGOUT)
+# ==========================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+        
+    if request.method == 'POST':
+        username = request.form.get('username')
+        senha = request.form.get('senha') 
+        
+        usuario = Usuario.query.filter_by(username=username).first()
+        
+        if usuario and senha and check_password_hash(usuario.senha_hash, senha):
+            # SEGURANÇA: Bloqueia o acesso se o admin desativou a conta
+            if not usuario.is_active_user:
+                flash('Esta conta está bloqueada pelo administrador.', 'danger')
+                return redirect(url_for('login'))
+                
+            login_user(usuario)
+            return redirect(url_for('home'))
+        else:
+            flash('Usuário ou senha incorretos. Tente novamente.', 'danger')
+            
     return render_template('login.html')
 
-# --- DASHBOARD PRINCIPAL ---
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('Você saiu da sua conta com sucesso.', 'success')
+    return redirect(url_for('login'))
+
+# ==========================================
+# ROTAS DE ADMINISTRAÇÃO (GERENCIAMENTO)
+# ==========================================
+@app.route('/admin/usuarios', methods=['GET', 'POST'])
+@login_required
+def gerenciar_usuarios():
+    if not current_user.is_admin:
+        flash("Acesso restrito! Apenas administradores podem acessar esta página.", "danger")
+        return redirect(url_for('home'))
+
+    # Exclusão via POST (seguro contra cliques acidentais)
+    if request.method == 'POST' and 'delete_user_id' in request.form:
+        user_id = request.form.get('delete_user_id')
+        user_to_delete = db.session.get(Usuario, user_id)
+        
+        if user_to_delete:
+            if user_to_delete.id == current_user.id:
+                flash("Operação cancelada: você não pode excluir sua própria conta admin.", "warning")
+            else:
+                db.session.delete(user_to_delete)
+                db.session.commit()
+                flash(f"Usuário '{user_to_delete.username}' removido permanentemente.", "success")
+        return redirect(url_for('gerenciar_usuarios'))
+
+    todos_usuarios = Usuario.query.all()
+    return render_template('admin_usuarios.html', usuarios=todos_usuarios, total_notificacoes=obter_contadores_notificacoes())
+
+
+@app.route('/admin/resetar/<int:id>')
+@login_required
+def resetar_senha(id):
+    if not current_user.is_admin:
+        flash("Acesso restrito!", "danger")
+        return redirect(url_for('home'))
+        
+    user_to_reset = db.session.get(Usuario, id)
+    if user_to_reset:
+        if user_to_reset.id == current_user.id:
+            flash("Você não pode resetar sua própria senha pelo painel de gerenciamento.", "warning")
+        else:
+            # Reseta para uma senha padrão segura temporária e ativa a flag de troca
+            user_to_reset.senha_hash = generate_password_hash('Mudar123@')
+            user_to_reset.forcar_troca_senha = True
+            db.session.commit()
+            flash(f"A senha de '{user_to_reset.username}' foi resetada para o padrão: Mudar123@", "success")
+            
+    return redirect(url_for('gerenciar_usuarios'))
+
+
+@app.route('/admin/bloquear/<int:id>')
+@login_required
+def alternar_bloqueio(id):
+    if not current_user.is_admin:
+        flash("Acesso restrito!", "danger")
+        return redirect(url_for('home'))
+        
+    user_to_block = db.session.get(Usuario, id)
+    if user_to_block:
+        if user_to_block.id == current_user.id:
+            flash("Operação negada: você não pode bloquear a si mesmo.", "warning")
+        else:
+            # Inverte o estado atual da conta (Ativa <-> Bloqueada)
+            user_to_block.is_active_user = not user_to_block.is_active_user
+            db.session.commit()
+            
+            status = "bloqueada" if not user_to_block.is_active_user else "desbloqueada"
+            categoria = "warning" if not user_to_block.is_active_user else "success"
+            flash(f"A conta de '{user_to_block.username}' foi {status}.", categoria)
+            
+    return redirect(url_for('gerenciar_usuarios'))
+
+
+# ==========================================
+# DASHBOARD E OUTRAS ROTAS
+# ==========================================
 @app.route('/')
 @login_required
 def home():
@@ -151,7 +255,6 @@ def home():
         usuario_logado=nome_boas_vindas, total_notificacoes=obter_contadores_notificacoes()
     )
 
-# --- CENTRAL DE LISTAGEM DE DADOS (SUPORTA FIXAS, VARIAVEIS E RESUMO) ---
 @app.route('/despesas/<string:escopo>/<string:frequencia>')
 @login_required
 def listar_despesas(escopo, frequencia):
@@ -219,7 +322,6 @@ def listar_despesas(escopo, frequencia):
     
     return render_template('visualizar_dados.html', titulo=titulo_tela, dados=registros_processados, escopo=escopo, freq=frequencia, t_geral=t_geral, t_pago=t_pago, t_aberto=t_aberto, total_notificacoes=obter_contadores_notificacoes())
 
-# --- ROTAS DE FLUXO ---
 @app.route('/criar', methods=['POST'])
 @login_required
 def criar():
@@ -273,7 +375,6 @@ def deletar(id, escopo, freq):
     db.session.commit()
     return redirect(url_for('listar_despesas', escopo=escopo, frequencia=freq))
 
-# --- PERFIL ---
 @app.route('/perfil')
 @login_required
 def ver_perfil():
@@ -292,7 +393,7 @@ def atualizar_perfil():
             f.save(os.path.join(app.config['UPLOAD_FOLDER'], nome_f))
             current_user.foto_perfil = nome_f
     db.session.commit()
-    flash("Perfil atualizado!", "success")
+    flash("Perfil updated!", "success")
     return redirect(url_for('ver_perfil'))
 
 @app.route('/perfil/senha', methods=['POST'])
@@ -300,7 +401,7 @@ def atualizar_perfil():
 def alterar_senha():
     antiga = request.form.get('senha_antiga')
     nova = request.form.get('senha_nova')
-    if check_password_hash(current_user.senha_hash, antiga):
+    if check_password_hash(current_user.senha_hash, antigua):
         current_user.senha_hash = generate_password_hash(nova)
         db.session.commit()
         flash("Senha alterada com sucesso!", "success")
@@ -347,8 +448,19 @@ def gerenciar_exclusao(id, acao):
 
 def atualizar_banco_de_dados():
     db.create_all()
+    if not Usuario.query.first():
+        senha_criptografada = generate_password_hash('admin1802')
+        admin = Usuario(
+            username='admin', 
+            email_seguranca='admin@seuapp.com', 
+            senha_hash=senha_criptografada, 
+            is_admin=True
+        )
+        db.session.add(admin)
+        db.session.commit()
+        print("Usuário Admin padrão criado! (username: admin / senha: admin123)")
 
 if __name__ == '__main__':
     with app.app_context():
         atualizar_banco_de_dados()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)

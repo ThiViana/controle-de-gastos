@@ -1,199 +1,372 @@
-{% extends 'base.html' %}
-{% block content %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Financeiro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0711;
+            --sidebar-bg: #130924;
+            --card-bg: #130924;
+            --border-color: #261342;
+            --primary-purple: #8b5cf6;
+            --text-muted: rgba(255, 255, 255, 0.5);
+            --hover-bg: #1e0e38;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
 
-<div class="container-fluid">
-    <div class="mb-5">
-        <h1 class="fw-bold mb-1">💰 Dashboard Financeiro</h1>
-        <p class="text-white-50">Bem-vindo, <span class="text-info fw-bold">{{ usuario_logado }}</span></p>
-    </div>
+        /* --- MENU LATERAL DINÂMICO (HOVER PARA EXPANDIR) --- */
+        .sidebar {
+            width: 75px; /* Tamanho inicial fechado */
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            transition: width 0.3s ease;
+            overflow: hidden;
+            white-space: nowrap;
+            z-index: 1000;
+        }
+        
+        /* Expande quando o mouse passa por cima */
+        .sidebar:hover {
+            width: 260px;
+        }
 
-    <div class="row g-4">
-        <div class="col-md-9">
-            
-            <div class="row g-3 mb-4">
+        .user-profile-header {
+            padding: 20px 0;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+            padding-left: 18px;
+        }
+        .avatar-small {
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+            border-radius: 50%;
+            border: 2px solid var(--primary-purple);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            background-color: var(--bg-color);
+        }
+        .user-name-text {
+            margin-left: 15px;
+            font-weight: bold;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .sidebar:hover .user-name-text {
+            opacity: 1;
+        }
+
+        .nav-item {
+            padding: 12px 20px;
+            color: #d1d5db;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .nav-item:hover {
+            background-color: var(--hover-bg);
+            color: white;
+        }
+        .nav-item.active {
+            border-left: 4px solid var(--primary-purple);
+            padding-left: 16px;
+            background-color: transparent;
+            color: white;
+        }
+        .nav-icon {
+            font-size: 1.3rem;
+            min-width: 35px;
+            text-align: center;
+        }
+        .nav-text {
+            margin-left: 10px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .sidebar:hover .nav-text {
+            opacity: 1;
+        }
+        .badge-notif {
+            background-color: #dc3545;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 50%;
+        }
+
+        /* --- CONTEÚDO PRINCIPAL --- */
+        .main-content {
+            margin-left: 75px; /* Alinhado com a barra fechada */
+            padding: 40px;
+            width: calc(100% - 75px);
+            display: flex;
+            gap: 30px;
+            transition: margin-left 0.3s ease;
+        }
+        .left-column { flex: 1; }
+        .right-column { width: 350px; }
+
+        /* --- CARDS --- */
+        .dashboard-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card-pago {
+            background-color: #142e22;
+            border-color: #1f4734;
+        }
+        .card-pago h4 { color: #4ade80; font-weight: bold; }
+        
+        .card-apagar {
+            background-color: #3f1425;
+            border-color: #5e1d35;
+        }
+        .card-apagar h4 { color: #fb7185; font-weight: bold; }
+
+        /* --- FORMULÁRIO --- */
+        .form-control, .form-select {
+            background-color: #0b0711;
+            border: 1px solid var(--border-color);
+            color: white;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #0b0711;
+            border-color: var(--primary-purple);
+            color: white;
+            box-shadow: none;
+        }
+        .btn-purple {
+            background-color: var(--primary-purple);
+            color: white;
+            font-weight: bold;
+            border: none;
+            transition: 0.2s;
+        }
+        .btn-purple:hover {
+            background-color: #7c3aed;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <div class="user-profile-header">
+            <div class="avatar-small">{{ current_user.username[0]|upper }}</div>
+            <div class="user-name-text">{{ current_user.username|capitalize }}</div>
+        </div>
+
+        <a href="{{ url_for('home') }}" class="nav-item active">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-text">Dashboard</span>
+        </a>
+        <a href="{{ url_for('listar_despesas', escopo='individuais', frequencia='resumo') }}" class="nav-item">
+            <span class="nav-icon">👤</span>
+            <span class="nav-text">Despesas Individuais</span>
+        </a>
+        <a href="{{ url_for('listar_despesas', escopo='partilhadas', frequencia='resumo') }}" class="nav-item">
+            <span class="nav-icon">👥</span>
+            <span class="nav-text">Despesas Partilhadas</span>
+        </a>
+        <a href="{{ url_for('ver_perfil') }}" class="nav-item">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-text">Configurações</span>
+        </a>
+        
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('gerenciar_usuarios') }}" class="nav-item">
+            <span class="nav-icon">🛠️</span>
+            <span class="nav-text" style="color: #fb7185;">Administração</span>
+        </a>
+        {% endif %}
+        
+        <a href="{{ url_for('solicitacoes') }}" class="nav-item">
+            <span class="nav-icon">🔔</span>
+            <span class="nav-text">Solicitações 
+                {% if total_notificacoes > 0 %}
+                    <span class="badge-notif ms-1">{{ total_notificacoes }}</span>
+                {% endif %}
+            </span>
+        </a>
+        
+        <div style="flex-grow: 1;"></div>
+        
+        <a href="{{ url_for('logout') }}" class="nav-item mb-4">
+            <span class="nav-icon">🚪</span>
+            <span class="nav-text">Sair</span>
+        </a>
+    </nav>
+
+
+    <main class="main-content">
+        
+        <div class="left-column">
+            <div class="mb-4">
+                <h1 class="fw-bold d-flex align-items-center gap-2">
+                    💰 Dashboard Financeiro
+                </h1>
+                <p class="text-muted mb-0">Bem-vindo, <span style="color: #38bdf8; font-weight: bold;">{{ usuario_logado }}</span></p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} py-2" style="background-color: var(--card-bg); color: white; border-color: var(--border-color);">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="row mb-2">
                 <div class="col-md-6">
-                    <div class="p-4 rounded-4" style="background: linear-gradient(135deg, #0d3c33 0%, #11221f 100%); border: 1px solid #197c6a;">
-                        <span class="text-white-50 small fw-bold text-uppercase">Total Pago</span>
-                        <h2 class="fw-bold mt-2 mb-0" style="color: #26e6a4;">R$ {{ "%.2f"|format(total_pago) }}</h2>
+                    <div class="dashboard-card card-pago">
+                        <small class="text-white-50 fw-bold">TOTAL PAGO</small>
+                        <h4 class="mt-2 mb-0">R$ {{ "%.2f"|format(total_pago) }}</h4>
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="p-4 rounded-4" style="background: linear-gradient(135deg, #4d142b 0%, #220814 100%); border: 1px solid #7c1944;">
-                        <span class="text-white-50 small fw-bold text-uppercase">Total a Pagar</span>
-                        <h2 class="fw-bold mt-2 mb-0" style="color: #ff5c93;">R$ {{ "%.2f"|format(total_a_pagar) }}</h2>
+                    <div class="dashboard-card card-apagar">
+                        <small class="text-white-50 fw-bold">TOTAL A PAGAR</small>
+                        <h4 class="mt-2 mb-0">R$ {{ "%.2f"|format(total_a_pagar) }}</h4>
                     </div>
                 </div>
             </div>
 
-            <div class="row g-3 mb-4">
-                <div class="col-md-5">
-                    <div class="p-4 rounded-4 h-100" style="background-color: #130924; border: 1px solid #261342;">
-                        <h5 class="fw-bold mb-3 text-white-50 text-uppercase" style="font-size: 0.8rem;">📊 Categorias de Gastos</h5>
-                        <div style="max-height: 180px;" class="d-flex justify-content-center align-items-center">
-                            {% if cat_fixas > 0 or cat_variaveis > 0 %}
-                                <canvas id="graficoCategorias"></canvas>
-                            {% else %}
-                                <small class="text-muted mt-4">Nenhum dado financeiro para gerar o gráfico este mês.</small>
-                            {% endif %}
-                        </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="dashboard-card h-100">
+                        <small class="text-white-50 fw-bold d-block mb-3">📊 CATEGORIAS DE GASTOS</small>
+                        <p class="text-muted small text-center my-4">
+                            Fixas: R$ {{ "%.2f"|format(cat_fixas) }}<br>
+                            Variáveis: R$ {{ "%.2f"|format(cat_variaveis) }}
+                        </p>
                     </div>
                 </div>
-                
-                <div class="col-md-7">
-                    <div class="p-4 rounded-4 h-100" style="background-color: #130924; border: 1px solid #261342;">
-                        <h5 class="fw-bold mb-3 text-white-50 text-uppercase" style="font-size: 0.8rem;">🗓️ Próximas Contas a Vencer</h5>
+                <div class="col-md-6">
+                    <div class="dashboard-card h-100">
+                        <small class="text-white-50 fw-bold d-block mb-3">🗓️ PRÓXIMAS CONTAS A VENCER</small>
                         {% if proximas %}
-                            <ul class="list-group list-group-flush bg-transparent">
-                                {% for item in proximas %}
-                                    <li class="list-group-item bg-transparent text-white border-secondary d-flex justify-content-between align-items-center px-0 py-2">
-                                        <div>
-                                            <span class="fw-bold d-block" style="font-size: 0.95rem;">{{ item.descricao }}</span>
-                                            <small class="badge bg-danger px-2 py-1" style="font-size: 0.7rem;">Vence: {{ item.vencimento }}</small>
-                                        </div>
-                                        <span class="text-white-50 fw-bold">R$ {{ "%.2f"|format(item.valor) }}</span>
-                                    </li>
-                                {% endfor %}
+                            <ul class="list-unstyled small">
+                            {% for p in proximas %}
+                                <li class="d-flex justify-content-between border-bottom border-secondary pb-2 mb-2">
+                                    <span>{{ p.descricao }}</span>
+                                    <span class="text-warning">{{ p.vencimento }} - R$ {{ "%.2f"|format(p.valor) }}</span>
+                                </li>
+                            {% endfor %}
                             </ul>
                         {% else %}
-                            <p class="text-muted small mb-0 mt-4 text-center">Nenhuma conta fixa pendente de pagamento!</p>
+                            <p class="text-muted small text-center my-4">Nenhuma conta fixa pendente de pagamento!</p>
                         {% endif %}
                     </div>
                 </div>
             </div>
 
-            <div class="p-4 rounded-4" style="background-color: #130924; border: 1px solid #261342;">
-                <h5 class="fw-bold mb-3 text-white-50 text-uppercase" style="font-size: 0.8rem;">⏱️ Últimas Transações / Histórico Recente</h5>
+            <div class="dashboard-card mt-3">
+                <small class="text-white-50 fw-bold d-block mb-3">⏱️ ÚLTIMAS TRANSAÇÕES / HISTÓRICO RECENTE</small>
                 {% if historico %}
-                <div class="table-responsive">
-                    <table class="table table-dark table-sm table-borderless align-middle mb-0">
-                        <thead>
-                            <tr class="text-muted" style="font-size: 0.8rem; border-bottom: 1px solid #261342;">
-                                <th style="width: 100px;" class="text-center">Status</th>
-                                <th class="py-2">Descrição</th>
-                                <th>Frequência</th>
-                                <th class="text-end">Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for t in historico %}
-                                <tr style="border-bottom: 1px solid #1c0f35;" class="{% if t.pago %}text-white-50{% endif %}">
-                                    <td class="text-center">
-                                        {% if t.pago %}
-                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.75rem; border-radius: 6px;">Pago</span>
-                                        {% else %}
-                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1" style="font-size: 0.75rem; border-radius: 6px;">Pendente</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="fw-bold py-2" style="font-size: 0.95rem;">
-                                        {% if t.pago %}<del class="text-muted">{{ t.descricao }}</del>{% else %}{{ t.descricao }}{% endif %}
-                                    </td>
-                                    <td><span class="badge bg-secondary" style="font-size: 0.7rem;">{{ t.frequencia }}</span></td>
-                                    <td class="text-end text-info fw-bold" style="font-size: 0.95rem;">R$ {{ "%.2f"|format(t.valor) }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                    <ul class="list-unstyled small mb-0">
+                    {% for h in historico %}
+                        <li class="d-flex justify-content-between mb-2">
+                            <span>{{ h.descricao }} ({{ h.frequencia }})</span>
+                            <span class="sample {% if h.pago %}text-success{% else %}text-danger{% endif %}">R$ {{ "%.2f"|format(h.valor) }}</span>
+                        </li>
+                    {% endfor %}
+                    </ul>
                 {% else %}
-                    <p class="text-muted small mb-0 text-center py-2">Nenhuma transação efetuada até o momento.</p>
+                    <p class="text-muted small text-center my-3">Nenhuma transação efetuada até o momento.</p>
                 {% endif %}
             </div>
         </div>
 
-        <div class="col-md-3">
-            <div class="p-4 rounded-4" style="background-color: #130924; border: 1px solid #261342;">
-                <h4 class="fw-bold mb-4" style="border-bottom: 1px solid #2a1545; padding-bottom: 10px; font-size: 1.25rem;">➕ Novo Gasto</h4>
-                <form action="/criar" method="POST">
+        <div class="right-column">
+            <div class="dashboard-card">
+                <h5 class="fw-bold mb-4">➕ Novo Gasto</h5>
+                
+                <form action="{{ url_for('criar') }}" method="POST">
                     <div class="mb-3">
-                        <label class="form-label text-white-50 small">Descrição</label>
-                        <input type="text" class="form-control text-white" name="descricao" required style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
+                        <label class="form-label small text-white-50">Descrição</label>
+                        <input type="text" name="descricao" class="form-control" required>
                     </div>
+                    
                     <div class="mb-3">
-                        <label class="form-label text-white-50 small">Valor</label>
-                        <input type="number" step="0.01" class="form-control text-white" name="valor" required style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
+                        <label class="form-label small text-white-50">Valor</label>
+                        <input type="number" step="0.01" name="valor" class="form-control" required>
                     </div>
+                    
                     <div class="mb-3">
-                        <label class="form-label text-white-50 small">Tipo de Gasto</label>
-                        <select class="form-select text-white" name="categoria" id="categoria" required onchange="toggleParceiroField()" style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
+                        <label class="form-label small text-white-50">Tipo de Gasto</label>
+                        <select name="categoria" class="form-select" id="tipoSelect" onchange="toggleParceiro()">
                             <option value="Individual">Individual</option>
-                            <option value="Partilhado">Partilhado com alguém</option>
+                            <option value="Partilhado">Partilhado</option>
                         </select>
                     </div>
 
-                    <div class="mb-3 d-none" id="campo-parceiro">
-                        <label class="form-label text-warning small fw-bold">👤 Usuário do Parceiro</label>
-                        <input type="text" class="form-control mb-2 text-white" name="parceiro_username" id="parceiro_username" style="background-color: #22123f; border: 1px solid #ffca28;">
-                        <input type="number" class="form-control mb-2 text-white" name="porcentagem_criador" id="porcentagem_criador" value="50" oninput="ajustarPorcentagens(true)" placeholder="Minha %" style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
-                        <input type="number" class="form-control text-white" name="porcentagem_parceiro" id="porcentagem_parceiro" value="50" oninput="ajustarPorcentagens(false)" placeholder="Parte dele %" style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
+                    <div id="divParceiro" style="display: none;" class="mb-3 p-3 border rounded border-secondary">
+                        <label class="form-label small text-white-50">Username do Parceiro</label>
+                        <input type="text" name="parceiro_username" class="form-control mb-2" placeholder="Ex: maria">
+                        <label class="form-label small text-white-50">Sua Porcentagem (%)</label>
+                        <input type="number" name="porcentagem_criador" class="form-control mb-2" value="50">
+                        <label class="form-label small text-white-50">Porcentagem Parceiro (%)</label>
+                        <input type="number" name="porcentagem_parceiro" class="form-control" value="50">
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label text-white-50 small">Frequência</label>
-                        <select class="form-select text-white" name="frequencia" id="frequencia" onchange="toggleVencimentoField()" required style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
+                    
+                    <div class="mb-4">
+                        <label class="form-label small text-white-50">Frequência</label>
+                        <select name="frequencia" class="form-select" id="freqSelect" onchange="toggleVencimento()">
                             <option value="Despesas Variáveis">Despesas Variáveis</option>
                             <option value="Despesas Fixas">Despesas Fixas</option>
                         </select>
                     </div>
 
-                    <div class="p-2 border border-secondary rounded mb-4 d-none" id="secao-vencimento" style="background-color: #1a0d2e;">
-                        <div class="mb-2">
-                            <label class="form-label text-info small fw-bold">Dia de Vencimento</label>
-                            <input type="text" class="form-control form-control-sm text-white" name="vencimento" placeholder="Ex: Todo dia 10" style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
-                        </div>
-                        <div>
-                            <label class="form-label text-white-50 small">Observações</label>
-                            <input type="text" class="form-control form-control-sm text-white" name="obs_vencimento" placeholder="Ex: Débito automático" style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
-                        </div>
+                    <div id="divVencimento" style="display: none;" class="mb-4">
+                        <label class="form-label small text-white-50">Dia do Vencimento (Ex: Todo dia 10)</label>
+                        <input type="text" name="vencimento" class="form-control">
+                        <input type="hidden" name="obs_vencimento" value="">
                     </div>
-
-                    <button type="submit" class="btn fw-bold w-100 py-2 text-white btn-salvar">Salvar Transação</button>
+                    
+                    <button type="submit" class="btn btn-purple w-100 py-2">Salvar Transação</button>
                 </form>
             </div>
         </div>
-    </div>
-</div>
+        
+    </main>
 
-<script>
-    function toggleParceiroField() {
-        var cat = document.getElementById('categoria').value;
-        document.getElementById('campo-parceiro').classList.toggle('d-none', cat !== 'Partilhado');
-    }
-    function toggleVencimentoField() {
-        var freq = document.getElementById('frequencia').value;
-        document.getElementById('secao-vencimento').classList.toggle('d-none', freq !== 'Despesas Fixas');
-    }
-    function ajustarPorcentagens(mudouCriador) {
-        var c = document.getElementById('porcentagem_criador');
-        var p = document.getElementById('porcentagem_parceiro');
-        if(mudouCriador) { p.value = 100 - parseFloat(c.value || 0); } 
-        else { c.value = 100 - parseFloat(p.value || 0); }
-    }
-
-    {% if cat_fixas > 0 or cat_variaveis > 0 %}
-    const ctx = document.getElementById('graficoCategorias').getContext('2d');
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Fixas', 'Variáveis'],
-            datasets: [{
-                data: [{{ cat_fixas }}, {{ cat_variaveis }}],
-                backgroundColor: ['#8a2be2', '#00e5ff'],
-                hoverOffset: 4,
-                borderWidth: 0
-            }]
-        },
-        options: {
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { color: '#ffffff', font: { size: 11 } }
-                }
-            },
-            responsive: true,
-            maintainAspectRatio: false
+    <script>
+        function toggleParceiro() {
+            var tipo = document.getElementById("tipoSelect").value;
+            document.getElementById("divParceiro").style.display = (tipo === "Partilhado") ? "block" : "none";
         }
-    });
-    {% endif %}
-</script>
-{% endblock %}
+        function toggleVencimento() {
+            var freq = document.getElementById("freqSelect").value;
+            document.getElementById("divVencimento").style.display = (freq === "Despesas Fixas") ? "block" : "none";
+        }
+    </script>
+</body>
+</html>
