@@ -27,7 +27,7 @@
 
         /* --- MENU LATERAL DINÂMICO (HOVER PARA EXPANDIR) --- */
         .sidebar {
-            width: 75px; /* Tamanho inicial fechado */
+            width: 75px;
             background-color: var(--sidebar-bg);
             border-right: 1px solid var(--border-color);
             display: flex;
@@ -40,7 +40,6 @@
             z-index: 1000;
         }
         
-        /* Expande quando o mouse passa por cima */
         .sidebar:hover {
             width: 260px;
         }
@@ -119,7 +118,7 @@
 
         /* --- CONTEÚDO PRINCIPAL --- */
         .main-content {
-            margin-left: 75px; /* Alinhado com a barra fechada */
+            margin-left: 75px; 
             padding: 40px;
             width: calc(100% - 75px);
             display: flex;
@@ -295,7 +294,7 @@
                     {% for h in historico %}
                         <li class="d-flex justify-content-between mb-2">
                             <span>{{ h.descricao }} ({{ h.frequencia }})</span>
-                            <span class="sample {% if h.pago %}text-success{% else %}text-danger{% endif %}">R$ {{ "%.2f"|format(h.valor) }}</span>
+                            <span class="{% if h.pago %}text-success{% else %}text-danger{% endif %}">R$ {{ "%.2f"|format(h.valor) }}</span>
                         </li>
                     {% endfor %}
                     </ul>
@@ -345,10 +344,15 @@
                         </select>
                     </div>
 
-                    <div id="divVencimento" style="display: none;" class="mb-4">
-                        <label class="form-label small text-white-50">Dia do Vencimento (Ex: Todo dia 10)</label>
-                        <input type="text" name="vencimento" class="form-control">
-                        <input type="hidden" name="obs_vencimento" value="">
+                    <div id="divVencimento" style="display: none;" class="mb-4 p-3 border rounded border-secondary">
+                        <div class="mb-3">
+                            <label class="form-label small" style="color: #38bdf8; font-weight: bold;">Dia de Vencimento</label>
+                            <input type="text" name="vencimento" class="form-control" placeholder="Ex: Todo dia 10">
+                        </div>
+                        <div>
+                            <label class="form-label small text-white-50">Observações</label>
+                            <input type="text" name="obs_vencimento" class="form-control" placeholder="Ex: Débito automático">
+                        </div>
                     </div>
                     
                     <button type="submit" class="btn btn-purple w-100 py-2">Salvar Transação</button>
