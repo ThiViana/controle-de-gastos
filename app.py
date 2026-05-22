@@ -194,14 +194,18 @@ def alternar_bloqueio(id):
 # ==========================================
 @app.route('/')
 @login_required
+@app.route('/')
+@login_required
 def home():
-    # Captura o mês selecionado pelo usuário (padrão é o mês atual)
+    # 1. Filtros de Data (Mês selecionado)
     mes_atual = datetime.now(timezone.utc).date().month
     mes_selecionado = request.args.get('mes', default=mes_atual, type=int)
     ano_atual = datetime.now(timezone.utc).date().year
 
+    # 2. Busca os dados no Banco
     transacoes = Transacao.query.filter_by(status_gasto='Aprovado').all()
     
+    # 3. Inicializa todas as variáveis que o index.html exige
     total_pago = 0.0
     total_a_pagar = 0.0
     cat_fixas = 0.0
@@ -209,11 +213,12 @@ def home():
     proximas = []
     historico = []
 
+    # 4. Processa as transações aplicando as regras do .lower()
     for t in transacoes:
         pertence = False
         valor_meu = 0.0
         
-        # Filtra pela data (se for variável, vê o mês. Se for fixa, ela sempre entra no mês)
+        # Filtra pela competência do mês/ano correto
         no_mes_correto = (t.data.month == mes_selecionado and t.data.year == ano_atual) or (t.frequencia == 'Despesas Fixas')
 
         if no_mes_correto:
@@ -230,10 +235,11 @@ def home():
                     elif current_user.username.lower() == parceiro:
                         valor_meu = t.valor * (t.porcentagem_parceiro / 100)
                         pertence = True
-                except: continue
+                except:
+                    continue
             
             if pertence:
-                # Alimenta o Histórico Recente
+                # Alimenta a lista do histórico recente
                 historico.append({
                     'descricao': t.descricao,
                     'frequencia': t.frequencia,
@@ -241,35 +247,43 @@ def home():
                     'pago': t.pago
                 })
 
-                # Separa os totais de pagos e pendentes
+                # Separa os montantes pagos e pendentes
                 if t.pago:
                     total_pago += valor_meu
                 else:
                     total_a_pagar += valor_meu
-                    # Se for conta fixa pendente, vai para "Próximas Contas"
                     if t.frequencia == 'Despesas Fixas':
                         proximas.append({
                             'descricao': t.descricao,
-                            'vencimento': t.parceiro_username if t.parceiro_username else 'Mensal', # usando campo pra guardar vencimento temporariamente se aplicável
+                            'vencimento': 'Mensal',
                             'valor': valor_meu
                         })
 
-                # Alimenta o Gráfico de Pizza
+                # Alimenta o gráfico de pizza
                 if t.frequencia == 'Despesas Fixas':
                     cat_fixas += valor_meu
                 else:
                     cat_variaveis += valor_meu
 
-    # Passa as variáveis do usuário explicitamente para não sumirem no template
+    # 5. Cálculo dinâmico das Notificações (Resolve o Erro 500 do Jinja2)
+    # Busca solicitações pendentes onde o usuário atual não foi o solicitante
+    id_transacoes_usuario = [t.id for t in transacoes if t.usuario_id == current_user.id]
+    total_notificacoes = SolicitacaoExclusao.query.filter(
+        SolicitacaoExclusao.transacao_id.in_(id_transacoes_usuario if id_transacoes_usuario else [0]),
+        SolicitacaoExclusao.solicitante_id != current_user.id
+    ).count()
+
+    # 6. Envia absolutamente tudo com segurança para o index.html
     return render_template('index.html', 
                            total_pago=total_pago, 
                            total_a_pagar=total_a_pagar,
                            cat_fixas=cat_fixas, 
                            cat_variaveis=cat_variaveis,
-                           proximas=proximas[:5], # limita a 5 itens
+                           proximas=proximas[:5], 
                            historico=historico[:5],
                            usuario_logado=current_user.username.capitalize(),
-                           mes_selecionado=mes_selecionado)
+                           mes_selecionado=mes_selecionado,
+                           total_notificacoes=total_notificacoes)
 @app.route('/despesas/<string:escopo>/<string:frequencia>')
 @login_required
 def listar_despesas(escopo, frequencia):
