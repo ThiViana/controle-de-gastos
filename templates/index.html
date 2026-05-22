@@ -63,8 +63,11 @@
             .sidebar:hover {
                 width: 260px;
             }
-            .sidebar:hover .nav-text, .sidebar:hover .user-name-text {
+            .sidebar:hover .nav-text, 
+            .sidebar:hover .user-name-text,
+            .sidebar:hover .submenu {
                 opacity: 1;
+                display: block;
             }
         }
 
@@ -98,10 +101,12 @@
             transition: opacity 0.2s ease;
         }
         
-        /* Controla a visibilidade quando expandido por clique */
-        .sidebar.expanded .user-name-text, .sidebar.expanded .nav-text {
+        /* Controla a visibilidade quando expandido no clique/mobile */
+        .sidebar.expanded .user-name-text, 
+        .sidebar.expanded .nav-text,
+        .sidebar.expanded .submenu {
             opacity: 1 !important;
-            display: inline-block !important;
+            display: block !important;
         }
 
         .nav-item {
@@ -133,6 +138,27 @@
             opacity: 0;
             transition: opacity 0.2s ease;
         }
+
+        /* --- SUBMENU (FIXA, VARIÁVEL, RESUMO) --- */
+        .submenu {
+            display: none;
+            padding-left: 55px;
+            margin-bottom: 10px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .submenu-item {
+            display: block;
+            padding: 5px 0;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .submenu-item:hover {
+            color: var(--primary-purple);
+        }
+
         .badge-notif {
             background-color: #dc3545;
             color: white;
@@ -200,24 +226,24 @@
         /* --- RESPONSIVIDADE SMARTPHONE --- */
         @media (max-width: 991px) {
             .menu-toggle {
-                display: block; /* Ativa botão hambúrguer */
+                display: block;
             }
             .main-content {
                 flex-direction: column;
                 padding: 20px;
-                padding-top: 75px; /* Abre espaço para o cabeçalho fixo */
+                padding-top: 75px;
                 margin-left: 0;
                 width: 100%;
                 gap: 15px;
             }
             .sidebar {
-                left: -260px; /* Esconde o menu completamente para fora da tela */
-                width: 260px; /* Abre já no tamanho completo */
+                left: -260px;
+                width: 260px;
             }
             .sidebar.expanded {
-                left: 0; /* Desloca o menu para dentro da tela ao clicar */
+                left: 0;
             }
-            .sidebar .nav-text, .sidebar .user-name-text {
+            .sidebar .nav-text, .sidebar .user-name-text, .sidebar .submenu {
                 opacity: 0;
                 display: none;
             }
@@ -245,14 +271,27 @@
             <span class="nav-icon">🏠</span>
             <span class="nav-text">Dashboard</span>
         </a>
+
         <a href="{{ url_for('listar_despesas', escopo='individuais', frequencia='resumo') }}" class="nav-item">
             <span class="nav-icon">👤</span>
             <span class="nav-text">Despesas Individuais</span>
         </a>
+        <div class="submenu">
+            <a href="{{ url_for('listar_despesas', escopo='individuais', frequencia='resumo') }}" class="submenu-item">• Resumo</a>
+            <a href="{{ url_for('listar_despesas', escopo='individuais', frequencia='fixas') }}" class="submenu-item">• Fixas</a>
+            <a href="{{ url_for('listar_despesas', escopo='individuais', frequencia='variaveis') }}" class="submenu-item">• Variáveis</a>
+        </div>
+
         <a href="{{ url_for('listar_despesas', escopo='partilhadas', frequencia='resumo') }}" class="nav-item">
             <span class="nav-icon">👥</span>
             <span class="nav-text">Despesas Partilhadas</span>
         </a>
+        <div class="submenu">
+            <a href="{{ url_for('listar_despesas', escopo='partilhadas', frequencia='resumo') }}" class="submenu-item">• Resumo</a>
+            <a href="{{ url_for('listar_despesas', escopo='partilhadas', frequencia='fixas') }}" class="submenu-item">• Fixas</a>
+            <a href="{{ url_for('listar_despesas', escopo='partilhadas', frequencia='variaveis') }}" class="submenu-item">• Variáveis</a>
+        </div>
+
         <a href="{{ url_for('ver_perfil') }}" class="nav-item">
             <span class="nav-icon">⚙️</span>
             <span class="nav-text">Configurações</span>
@@ -445,7 +484,6 @@
             document.getElementById("appSidebar").classList.toggle("expanded");
         }
 
-        // Fecha o menu automaticamente se o usuário tocar fora dele
         document.addEventListener("click", function(event) {
             var sidebar = document.getElementById("appSidebar");
             var toggleBtn = document.querySelector(".menu-toggle");
