@@ -2,77 +2,367 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Solicitações Pendentes</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitações Compartilhadas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0711;
+            --sidebar-bg: #130924;
+            --card-bg: #130924;
+            --border-color: #261342;
+            --primary-purple: #8b5cf6;
+            --text-muted: rgba(255, 255, 255, 0.5);
+            --hover-bg: #1e0e38;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* --- MENU LATERAL DINÂMICO (PADRÃO DO SEU APP) --- */
+        .sidebar {
+            width: 75px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            transition: width 0.3s ease;
+            overflow: hidden;
+            white-space: nowrap;
+            z-index: 1000;
+        }
+        
+        @media (min-width: 992px) {
+            .sidebar:hover {
+                width: 260px;
+            }
+            .sidebar:hover .nav-text, 
+            .sidebar:hover .user-name-text,
+            .sidebar:hover .submenu {
+                opacity: 1;
+                display: block;
+            }
+        }
+
+        .sidebar.expanded {
+            width: 260px !important;
+        }
+        .sidebar.expanded .nav-text,
+        .sidebar.expanded .user-name-text,
+        .sidebar.expanded .submenu {
+            opacity: 1 !important;
+            display: block !important;
+        }
+
+        .user-profile-header {
+            padding: 20px 0;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+            padding-left: 18px;
+        }
+        .avatar-small {
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+            border-radius: 50%;
+            border: 2px solid var(--primary-purple);
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            background-color: var(--bg-color);
+            object-fit: cover;
+        }
+        .user-name-text {
+            margin-left: 15px;
+            font-weight: bold;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            display: none;
+        }
+
+        .nav-item {
+            padding: 12px 20px;
+            color: #d1d5db;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .nav-item:hover {
+            background-color: var(--hover-bg);
+            color: white;
+        }
+        .nav-item.active {
+            border-left: 4px solid var(--primary-purple);
+            padding-left: 16px;
+            background-color: transparent;
+            color: white;
+        }
+        .nav-icon {
+            font-size: 1.3rem;
+            min-width: 35px;
+            text-align: center;
+        }
+        .nav-text {
+            margin-left: 10px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            display: none;
+        }
+
+        .submenu {
+            display: none;
+            padding-left: 55px;
+            margin-bottom: 10px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .submenu-item {
+            display: block;
+            padding: 5px 0;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .submenu-item:hover {
+            color: var(--primary-purple);
+        }
+        .badge-notif {
+            background-color: #dc3545;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 50%;
+        }
+
+        /* --- CONTEÚDO PRINCIPAL (CORRIGIDO PARA SEGUIR A HOME E LISTAGEM) --- */
+        .main-content {
+            margin-left: 75px; 
+            padding: 40px;
+            width: calc(100% - 75px);
+            transition: all 0.3s ease;
+        }
+
+        /* --- CARDS E BOTÕES REESTRUTURADOS --- */
+        .solicitacao-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .btn-purple {
+            background-color: var(--primary-purple);
+            color: white;
+            font-weight: bold;
+            border: none;
+            transition: 0.2s;
+        }
+        .btn-purple:hover {
+            background-color: #7c3aed;
+        }
+        .btn-accept {
+            background-color: #198754;
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+        .btn-accept:hover { background-color: #157347; }
+        
+        .btn-reject {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+        .btn-reject:hover { background-color: #bb2d3b; }
+
+        /* --- RESPONSIVIDADE COMPACTA MOBILE --- */
+        @media (max-width: 991px) {
+            .main-content {
+                padding: 20px;
+                margin-left: 75px;
+                width: calc(100% - 75px);
+            }
+            .sidebar:hover {
+                width: 75px;
+            }
+            .solicitacao-card .d-flex {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .solicitacao-card .btn-group-mobile {
+                width: 100%;
+                display: flex;
+                gap: 10px;
+            }
+            .solicitacao-card .btn-group-mobile a {
+                flex: 1;
+                text-align: center;
+            }
+        }
+    </style>
 </head>
-<body style="background-color: #0b0711; color: white; padding: 40px; font-family: 'Segoe UI', sans-serif;">
-    <div class="container" style="max-width: 900px;">
-        <div class="d-flex justify-content-between align-items-center mb-5">
-            <h2>🔔 Central de Solicitações Compartilhadas</h2>
-            <a href="/" class="btn btn-secondary btn-sm px-3" style="background-color: #27144d; border: 1px solid #3d1d6d;">Voltar</a>
+<body>
+
+    <nav class="sidebar" id="appSidebar" onclick="handleSidebarClick(event)">
+        <div class="user-profile-header">
+            {% if current_user.foto_perfil %}
+                <img src="{{ url_for('static', filename='uploads/' + current_user.foto_perfil) }}" class="avatar-small">
+            {% else %}
+                <div class="avatar-small">{{ current_user.username[0]|upper }}</div>
+            {% endif %}
+            <div class="user-name-text">{{ current_user.username|capitalize }}</div>
         </div>
 
-        <div class="p-4 mb-4" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px;">
-            <h5 class="text-info fw-bold mb-3">➕ Solicitações para Novos Gastos Conjuntos</h5>
+        <a href="{{ url_for('home') }}" class="nav-item">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-text">Dashboard</span>
+        </a>
+
+        <a href="{{ url_for('listar_despesas', escopo='individuais', frequencia='resumo') }}" class="nav-item">
+            <span class="nav-icon">👤</span>
+            <span class="nav-text">Despesas Individuais</span>
+        </a>
+        <div class="submenu">
+            <a href="{{ url_for('listar_despesas', escopo='individuais', frequencia='resumo') }}" class="submenu-item">• Resumo</a>
+            <a href="{{ url_for('listar_despesas', escopo='individuais', frequencia='fixas') }}" class="submenu-item">• Fixas</a>
+            <a href="{{ url_for('listar_despesas', escopo='individuais', frequencia='variaveis') }}" class="submenu-item">• Variáveis</a>
+        </div>
+
+        <a href="{{ url_for('listar_despesas', escopo='partilhadas', frequencia='resumo') }}" class="nav-item">
+            <span class="nav-icon">👥</span>
+            <span class="nav-text">Despesas Partilhadas</span>
+        </a>
+        <div class="submenu">
+            <a href="{{ url_for('listar_despesas', escopo='partilhadas', frequencia='resumo') }}" class="submenu-item">• Resumo</a>
+            <a href="{{ url_for('listar_despesas', escopo='partilhadas', frequencia='fixas') }}" class="submenu-item">• Fixas</a>
+            <a href="{{ url_for('listar_despesas', escopo='partilhadas', frequencia='variaveis') }}" class="submenu-item">• Variáveis</a>
+        </div>
+
+        <a href="{{ url_for('ver_perfil') }}" class="nav-item">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-text">Configurações</span>
+        </a>
+        
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('gerenciar_usuarios') }}" class="nav-item">
+            <span class="nav-icon">🛠️</span>
+            <span class="nav-text" style="color: #fb7185;">Administração</span>
+        </a>
+        {% endif %}
+        
+        <a href="{{ url_for('solicitacoes') }}" class="nav-item active">
+            <span class="nav-icon">🔔</span>
+            <span class="nav-text">Solicitações 
+                {% if total_notificacoes > 0 %}
+                    <span class="badge-notif ms-1">{{ total_notificacoes }}</span>
+                {% endif %}
+            </span>
+        </a>
+        
+        <div style="flex-grow: 1;"></div>
+        
+        <a href="{{ url_for('logout') }}" class="nav-item mb-4">
+            <span class="nav-icon">🚪</span>
+            <span class="nav-text">Sair</span>
+        </a>
+    </nav>
+
+    <main class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div>
+                <h1 class="fw-bold mb-0">🔔 Central de Solicitações</h1>
+                <p class="text-white-50 mb-0">Gerencie aprovações de gastos conjuntos com seu parceiro</p>
+            </div>
+            <a href="{{ url_for('home') }}" class="btn btn-purple px-4 py-2 small">Voltar ao Dashboard</a>
+        </div>
+
+        <h4 class="fw-bold mb-3" style="color: #38bdf8;">➕ Novos Gastos Pendentes</h4>
+        <div class="mb-5">
             {% if criacoes %}
-            <div class="table-responsive">
-                <table class="table table-dark align-middle">
-                    <thead>
-                        <tr>
-                            <th>Descrição</th>
-                            <th>Valor Cheio</th>
-                            <th>Enviado por</th>
-                            <th class="text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in criacoes %}
-                        <tr>
-                            <td>{{ item.gasto.descricao }} <span class="badge bg-secondary">{{ item.gasto.frequencia }}</span></td>
-                            <td class="text-warning">R$ {{ "%.2f"|format(item.gasto.valor) }}</td>
-                            <td><strong class="text-info">{{ item.nome_criador }}</strong></td>
-                            <td class="text-center">
-                                <a href="/solicitacao/criacao/{{ item.gasto.id }}/aceitar" class="btn btn-success btn-sm fw-bold me-2">✓ Aceitar</a>
-                                <a href="/solicitacao/criacao/{{ item.gasto.id }}/recusar" class="btn btn-danger btn-sm">× Recusar</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                {% for item in criacoes %}
+                    <div class="solicitacao-card">
+                        <div class="d-flex justify-content-between align-items-md-center flex-wrap gap-3">
+                            <div>
+                                <h5 class="fw-bold mb-1">{{ item.gasto.descricao }}</h5>
+                                <p class="text-white-50 mb-0 small">
+                                    Enviado por: <span class="text-white fw-bold">{{ item.nome_criador }}</span> | 
+                                    Frequência: <span class="text-white">{{ item.gasto.frequencia }}</span>
+                                </p>
+                            </div>
+                            <div class="d-flex align-items-center gap-4 btn-group-mobile">
+                                <h4 class="fw-bold text-success mb-0">R$ {{ "%.2f"|format(item.gasto.valor) }}</h4>
+                                <div class="d-flex gap-2 btn-group-mobile">
+                                    <a href="{{ url_for('gerenciar_criacao', id=item.gasto.id, acao='aceitar') }}" class="btn btn-accept px-3 py-2 btn-sm rounded-3">Aceitar</a>
+                                    <a href="{{ url_for('gerenciar_criacao', id=item.gasto.id, acao='recusar') }}" class="btn btn-reject px-3 py-2 btn-sm rounded-3">Recusar</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
             {% else %}
-            <p class="text-white-50 small mb-0">Nenhum pedido de criação de despesa pendente.</p>
+                <div class="solicitacao-card text-center text-muted py-4 small">
+                    Nenhum pedido de criação de despesa conjunto pendente.
+                </div>
             {% endif %}
         </div>
 
-        <div class="p-4" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px;">
-            <h5 class="text-danger fw-bold mb-3">⚠️ Solicitações de Exclusão de Gastos Existentes</h5>
+        <h4 class="fw-bold mb-3" style="color: #fb7185;">❌ Pedidos de Exclusão Coletiva</h4>
+        <div>
             {% if exclusoes %}
-            <div class="table-responsive">
-                <table class="table table-dark align-middle">
-                    <thead>
-                        <tr>
-                            <th>Descrição do Gasto</th>
-                            <th class="text-center">Confirmação Mútua</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for e in exclusoes %}
-                        <tr>
-                            <td>Um parceiro enviou um pedido para excluir uma transação conjunta deste painel.</td>
-                            <td class="text-center">
-                                <a href="/solicitacao/exclusao/{{ e.id }}/aceitar" class="btn btn-danger btn-sm me-2">🗑️ Confirmar Exclusão</a>
-                                <a href="/solicitacao/exclusao/{{ e.id }}/recusar" class="btn btn-outline-secondary btn-sm">Manter Gasto</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                {% for sol in exclusoes %}
+                    <div class="solicitacao-card" style="border-color: #5e1d35;">
+                        <div class="d-flex justify-content-between align-items-md-center flex-wrap gap-3">
+                            <div>
+                                <h5 class="fw-bold mb-1">Pedido de Remoção</h5>
+                                <p class="text-white-50 mb-0 small">
+                                    O seu parceiro solicitou apagar permanentemente um gasto compartilhado.
+                                </p>
+                            </div>
+                            <div class="d-flex gap-2 btn-group-mobile">
+                                <a href="{{ url_for('gerenciar_exclusao', id=sol.id, acao='aceitar') }}" class="btn btn-accept px-3 py-2 btn-sm rounded-3">Confirmar Exclusão</a>
+                                <a href="{{ url_for('gerenciar_exclusao', id=sol.id, acao='recusar') }}" class="btn btn-reject px-3 py-2 btn-sm rounded-3">Manter Gasto</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
             {% else %}
-            <p class="text-white-50 small mb-0">Nenhum pedido de exclusão conjunta pendente.</p>
+                <div class="solicitacao-card text-center text-muted py-4 small">
+                    Nenhum pedido de exclusão conjunta pendente.
+                </div>
             {% endif %}
         </div>
-    </div>
+    </main>
+
+    <script>
+        function handleSidebarClick(event) {
+            if (window.innerWidth <= 991) {
+                event.stopPropagation();
+                document.getElementById("appSidebar").classList.toggle("expanded");
+            }
+        }
+        document.addEventListener("click", function(event) {
+            var sidebar = document.getElementById("appSidebar");
+            if (!sidebar.contains(event.target)) {
+                sidebar.classList.remove("expanded");
+            }
+        });
+    </script>
 </body>
 </html>
