@@ -101,7 +101,6 @@ def login():
         usuario = Usuario.query.filter_by(username=username).first()
         
         if usuario and senha and check_password_hash(usuario.senha_hash, senha):
-            # SEGURANÇA: Bloqueia o acesso se o admin desativou a conta
             if not usuario.is_active_user:
                 flash('Esta conta está bloqueada pelo administrador.', 'danger')
                 return redirect(url_for('login'))
@@ -130,7 +129,6 @@ def gerenciar_usuarios():
         flash("Acesso restrito! Apenas administradores podem acessar esta página.", "danger")
         return redirect(url_for('home'))
 
-    # Exclusão via POST (seguro contra cliques acidentais)
     if request.method == 'POST' and 'delete_user_id' in request.form:
         user_id = request.form.get('delete_user_id')
         user_to_delete = db.session.get(Usuario, user_id)
@@ -160,7 +158,6 @@ def resetar_senha(id):
         if user_to_reset.id == current_user.id:
             flash("Você não pode resetar sua própria senha pelo painel de gerenciamento.", "warning")
         else:
-            # Reseta para uma senha padrão segura temporária e ativa a flag de troca
             user_to_reset.senha_hash = generate_password_hash('Mudar123@')
             user_to_reset.forcar_troca_senha = True
             db.session.commit()
@@ -181,7 +178,6 @@ def alternar_bloqueio(id):
         if user_to_block.id == current_user.id:
             flash("Operação negada: você não pode bloquear a si mesmo.", "warning")
         else:
-            # Inverte o estado atual da conta (Ativa <-> Bloqueada)
             user_to_block.is_active_user = not user_to_block.is_active_user
             db.session.commit()
             
@@ -222,10 +218,12 @@ def home():
                 criador, parceiro = [n.strip().lower() for n in conteudo.split('->')]
             except:
                 continue
-            if current_user.username == criador:
+            
+            # Ajuste de validação: ignorando maiúsculas e minúsculas
+            if current_user.username.lower() == criador:
                 valor_meu = t.valor * ((t.porcentagem_criador or 50.0) / 100)
                 pertence = True
-            elif current_user.username == parceiro:
+            elif current_user.username.lower() == parceiro:
                 valor_meu = t.valor * ((t.porcentagem_parceiro or 50.0) / 100)
                 pertence = True
 
@@ -296,14 +294,15 @@ def listar_despesas(escopo, frequencia):
             except:
                 continue
             
-            if current_user.username == criador or current_user.username == parceiro:
-                outro = parceiro if current_user.username == criador else criador
+            # Ajuste de validação: ignorando maiúsculas e minúsculas para visualização
+            if current_user.username.lower() == criador or current_user.username.lower() == parceiro:
+                outro = parceiro if current_user.username.lower() == criador else criador
                 if outro not in cache_nomes:
                     u = Usuario.query.filter_by(username=outro).first()
                     cache_nomes[outro] = u.nome_exibicao if (u and u.nome_exibicao) else outro.capitalize()
                     
-                minha_pct = t.porcentagem_criador if current_user.username == criador else t.porcentagem_parceiro
-                parceiro_pct = t.porcentagem_parceiro if current_user.username == criador else t.porcentagem_criador
+                minha_pct = t.porcentagem_criador if current_user.username.lower() == criador else t.porcentagem_parceiro
+                parceiro_pct = t.porcentagem_parceiro if current_user.username.lower() == criador else t.porcentagem_criador
                 
                 meu_valor = t.valor * (minha_pct / 100)
                 parceiro_valor = t.valor * (parceiro_pct / 100)
@@ -354,7 +353,8 @@ def criar():
 @login_required
 def alternar_pagamento(id, escopo, freq):
     t = Transacao.query.get_or_404(id)
-    if t.usuario_id == current_user.id or t.parceiro_username == current_user.username:
+    # Validação case-insensitive
+    if t.usuario_id == current_user.id or (t.parceiro_username and t.parceiro_username.lower() == current_user.username.lower()):
         t.pago = not t.pago
         db.session.commit()
     return redirect(url_for('listar_despesas', escopo=escopo, frequencia=freq))
@@ -428,7 +428,7 @@ def solicitacoes():
 @login_required
 def gerenciar_criacao(id, acao):
     t = Transacao.query.get_or_404(id)
-    if t.parceiro_username == current_user.username:
+    if t.parceiro_username and t.parceiro_username.lower() == current_user.username.lower():
         if acao == 'aceitar': t.status_gasto = 'Aprovado'
         else: db.session.delete(t)
         db.session.commit()
