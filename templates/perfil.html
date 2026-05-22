@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações de Perfil</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0711;
+            --sidebar-bg: #130924;
+            --card-bg: #130924;
+            --border-color: #261342;
+            --primary-purple: #8b5cf6;
+            --text-muted: rgba(255, 255, 255, 0.5);
+            --hover-bg: #1e0e38;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
+        
+        /* --- MENU LATERAL DINÂMICO (HOVER PARA EXPANDIR) --- */
+        .sidebar {
+            width: 75px; /* Tamanho inicial fechado */
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            transition: width 0.3s ease;
+            overflow: hidden;
+            white-space: nowrap;
+            z-index: 1000;
+        }
+        
+        /* Expande quando o mouse passa por cima */
+        .sidebar:hover {
+            width: 260px;
+        }
+
+        .user-profile-header {
+            padding: 20px 0;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+            padding-left: 18px; /* Alinha o avatar com os ícones */
+        }
+        .avatar-small {
+            width: 38px;
+            height: 38px;
+            min-width: 38px; /* Impede que esmague ao fechar */
+            border-radius: 50%;
+            border: 2px solid var(--primary-purple);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            background-color: var(--bg-color);
+        }
+        .user-name-text {
+            margin-left: 15px;
+            font-weight: bold;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .sidebar:hover .user-name-text {
+            opacity: 1;
+        }
+
+        .nav-item {
+            padding: 12px 20px;
+            color: #d1d5db;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .nav-item:hover {
+            background-color: var(--hover-bg);
+            color: white;
+        }
+        .nav-item.active {
+            border-left: 4px solid var(--primary-purple);
+            padding-left: 16px; /* Compensa a borda para não pular o ícone */
+            background-color: transparent;
+            color: white;
+        }
+        .nav-icon {
+            font-size: 1.3rem;
+            min-width: 35px;
+            text-align: center;
+        }
+        .nav-text {
+            margin-left: 10px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        /* Mostra o texto quando a barra expande */
+        .sidebar:hover .nav-text {
+            opacity: 1;
+        }
+
+        /* --- CONTEÚDO PRINCIPAL --- */
+        .main-content {
+            margin-left: 75px; /* Margem igual ao tamanho do menu fechado */
+            padding: 40px;
+            width: calc(100% - 75px);
+            transition: margin-left 0.3s ease;
+        }
+
+        /* --- CARDS E FORMULÁRIOS --- */
+        .profile-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 800px;
+        }
+        .avatar-large {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background-color: #3b82f6; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            color: white;
+            margin: 0 auto 20px auto;
+        }
+        .form-control {
+            background-color: #0b0711;
+            border: 1px solid var(--border-color);
+            color: white;
+        }
+        .form-control:focus {
+            background-color: #0b0711;
+            border-color: var(--primary-purple);
+            color: white;
+            box-shadow: 0 0 0 0.25rem rgba(139, 92, 246, 0.25);
+        }
+        .btn-purple {
+            background-color: var(--primary-purple);
+            color: white;
+            font-weight: bold;
+            border: none;
+            transition: 0.2s;
+        }
+        .btn-purple:hover {
+            background-color: #7c3aed;
+            color: white;
+        }
+        .btn-outline-secondary {
+            border-color: var(--border-color);
+            color: white;
+        }
+        .btn-outline-secondary:hover {
+            background-color: var(--border-color);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <div class="user-profile-header">
+            <div class="avatar-small">{{ current_user.username[0]|upper }}</div>
+            <div class="user-name-text">{{ current_user.username|capitalize }}</div>
+        </div>
+
+        <a href="{{ url_for('home') }}" class="nav-item">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-text">Dashboard</span>
+        </a>
+        <a href="{{ url_for('listar_despesas', escopo='individuais', frequencia='resumo') }}" class="nav-item">
+            <span class="nav-icon">👤</span>
+            <span class="nav-text">Despesas Individuais</span>
+        </a>
+        <a href="{{ url_for('listar_despesas', escopo='partilhadas', frequencia='resumo') }}" class="nav-item">
+            <span class="nav-icon">👥</span>
+            <span class="nav-text">Despesas Partilhadas</span>
+        </a>
+        <a href="{{ url_for('ver_perfil') }}" class="nav-item active">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-text">Configurações</span>
+        </a>
+        
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('gerenciar_usuarios') }}" class="nav-item">
+            <span class="nav-icon">🛠️</span>
+            <span class="nav-text" style="color: #fb7185;">Administração</span>
+        </a>
+        {% endif %}
+        
+        <a href="{{ url_for('solicitacoes') }}" class="nav-item">
+            <span class="nav-icon">🔔</span>
+            <span class="nav-text">Solicitações 
+                {% if total_notificacoes > 0 %}
+                    <span class="badge bg-danger ms-1">{{ total_notificacoes }}</span>
+                {% endif %}
+            </span>
+        </a>
+        
+        <div style="flex-grow: 1;"></div>
+        
+        <a href="{{ url_for('logout') }}" class="nav-item mb-4">
+            <span class="nav-icon">🚪</span>
+            <span class="nav-text">Sair</span>
+        </a>
+    </nav>
+
+    <main class="main-content">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4" style="max-width: 800px;">
+            <h2 class="fw-bold d-flex align-items-center gap-2 mb-0">
+                ⚙️ Configurações de Perfil
+            </h2>
+            <a href="{{ url_for('home') }}" class="btn btn-outline-secondary btn-sm px-3 py-2" style="border-radius: 8px;">Voltar</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div style="max-width: 800px;">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} py-2" style="background-color: var(--card-bg); color: white; border-color: var(--border-color);">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="profile-card">
+            <small class="text-white-50 fw-bold d-block mb-4">INFORMAÇÕES GERAIS</small>
+            
+            <form action="{{ url_for('atualizar_perfil') }}" method="POST" enctype="multipart/form-data">
+                <div class="text-center mb-4">
+                    <div class="avatar-large">
+                        {{ current_user.username[0]|upper }}
+                    </div>
+                    <div class="d-flex justify-content-center">
+                        <input class="form-control form-control-sm w-50" type="file" name="foto_perfil" id="foto_perfil">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label text-white-50 small">Nome de Exibição</label>
+                    <input type="text" name="nome_exibicao" class="form-control" value="{{ current_user.nome_exibicao or '' }}" placeholder="Como você quer ser chamado?">
+                </div>
+
+                <button type="submit" class="btn btn-purple w-100 py-2" style="border-radius: 8px;">
+                    Alterar
+                </button>
+            </form>
+        </div>
+
+        <div class="profile-card mt-4">
+            <small class="text-white-50 fw-bold d-block mb-4">SEGURANÇA DA CONTA</small>
+            
+            <form action="{{ url_for('alterar_senha') }}" method="POST">
+                <div class="mb-3">
+                    <label class="form-label text-white-50 small">Senha Atual</label>
+                    <input type="password" name="senha_antiga" class="form-control" required>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label text-white-50 small">Nova Senha</label>
+                    <input type="password" name="senha_nova" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-outline-secondary w-100 py-2" style="border-radius: 8px;">
+                    Atualizar Senha
+                </button>
+            </form>
+        </div>
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

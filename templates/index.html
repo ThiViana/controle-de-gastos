@@ -3,228 +3,369 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Gastos</title>
+    <title>Dashboard Financeiro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#0b0711">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    
     <style>
-        .btn-salvar { background-color: #8a2be2; border: none; border-radius: 8px; transition: all 0.2s; }
-        .btn-salvar:hover { background-color: #a044ff !important; box-shadow: 0 0 12px rgba(138, 43, 226, 0.5); transform: translateY(-1px); }
-        .btn-mes { background-color: #27144d; border: 1px solid #3d1d6d; border-radius: 8px; transition: all 0.2s; }
-        .btn-mes:hover { background-color: #1c0e39 !important; border-color: #5c2bb5 !important; }
-        .dropdown-item:hover { background-color: #3d1d6d !important; color: #ffffff !important; }
-        .btn-deletar { background-color: rgba(255, 118, 159, 0.1); color: #ff769f; border: 1px solid rgba(255, 118, 159, 0.3); padding: 2px 10px; border-radius: 6px; font-weight: bold; text-decoration: none; transition: all 0.2s; }
-        .btn-deletar:hover { background-color: rgba(255, 118, 159, 0.25) !important; color: #ff4f81 !important; border-color: rgba(255, 118, 159, 0.6) !important; }
+        :root {
+            --bg-color: #0b0711;
+            --sidebar-bg: #130924;
+            --card-bg: #130924;
+            --border-color: #261342;
+            --primary-purple: #8b5cf6;
+            --text-muted: rgba(255, 255, 255, 0.5);
+            --hover-bg: #1e0e38;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* --- MENU LATERAL DINÂMICO (HOVER PARA EXPANDIR) --- */
+        .sidebar {
+            width: 75px; /* Tamanho inicial fechado */
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            transition: width 0.3s ease;
+            overflow: hidden;
+            white-space: nowrap;
+            z-index: 1000;
+        }
+        
+        /* Expande quando o mouse passa por cima */
+        .sidebar:hover {
+            width: 260px;
+        }
+
+        .user-profile-header {
+            padding: 20px 0;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+            padding-left: 18px;
+        }
+        .avatar-small {
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+            border-radius: 50%;
+            border: 2px solid var(--primary-purple);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            background-color: var(--bg-color);
+        }
+        .user-name-text {
+            margin-left: 15px;
+            font-weight: bold;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .sidebar:hover .user-name-text {
+            opacity: 1;
+        }
+
+        .nav-item {
+            padding: 12px 20px;
+            color: #d1d5db;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .nav-item:hover {
+            background-color: var(--hover-bg);
+            color: white;
+        }
+        .nav-item.active {
+            border-left: 4px solid var(--primary-purple);
+            padding-left: 16px;
+            background-color: transparent;
+            color: white;
+        }
+        .nav-icon {
+            font-size: 1.3rem;
+            min-width: 35px;
+            text-align: center;
+        }
+        .nav-text {
+            margin-left: 10px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .sidebar:hover .nav-text {
+            opacity: 1;
+        }
+        .badge-notif {
+            background-color: #dc3545;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 50%;
+        }
+
+        /* --- CONTEÚDO PRINCIPAL --- */
+        .main-content {
+            margin-left: 75px; /* Alinhado com a barra fechada */
+            padding: 40px;
+            width: calc(100% - 75px);
+            display: flex;
+            gap: 30px;
+            transition: margin-left 0.3s ease;
+        }
+        .left-column { flex: 1; }
+        .right-column { width: 350px; }
+
+        /* --- CARDS --- */
+        .dashboard-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card-pago {
+            background-color: #142e22;
+            border-color: #1f4734;
+        }
+        .card-pago h4 { color: #4ade80; font-weight: bold; }
+        
+        .card-apagar {
+            background-color: #3f1425;
+            border-color: #5e1d35;
+        }
+        .card-apagar h4 { color: #fb7185; font-weight: bold; }
+
+        /* --- FORMULÁRIO --- */
+        .form-control, .form-select {
+            background-color: #0b0711;
+            border: 1px solid var(--border-color);
+            color: white;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #0b0711;
+            border-color: var(--primary-purple);
+            color: white;
+            box-shadow: none;
+        }
+        .btn-purple {
+            background-color: var(--primary-purple);
+            color: white;
+            font-weight: bold;
+            border: none;
+            transition: 0.2s;
+        }
+        .btn-purple:hover {
+            background-color: #7c3aed;
+            transform: translateY(-2px);
+        }
     </style>
 </head>
-<body style="background-color: #0b0711; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+<body>
 
-    <div class="container-fluid p-4">
+    <nav class="sidebar">
+        <div class="user-profile-header">
+            <div class="avatar-small">{{ current_user.username[0]|upper }}</div>
+            <div class="user-name-text">{{ current_user.username|capitalize }}</div>
+        </div>
+
+        <a href="{{ url_for('home') }}" class="nav-item active">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-text">Dashboard</span>
+        </a>
+        <a href="{{ url_for('listar_despesas', escopo='individuais', frequencia='resumo') }}" class="nav-item">
+            <span class="nav-icon">👤</span>
+            <span class="nav-text">Despesas Individuais</span>
+        </a>
+        <a href="{{ url_for('listar_despesas', escopo='partilhadas', frequencia='resumo') }}" class="nav-item">
+            <span class="nav-icon">👥</span>
+            <span class="nav-text">Despesas Partilhadas</span>
+        </a>
+        <a href="{{ url_for('ver_perfil') }}" class="nav-item">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-text">Configurações</span>
+        </a>
         
-        <div class="mb-5 d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div>
-                <h1 style="color: #ffffff; font-weight: 700;">💰 Painel de Controle de Gastos</h1>
-                <p class="text-white-50 mb-0">Olá, <strong style="color: #e2bbfd;">{{ usuario_logado|capitalize }}</strong>! Bem-vindo de volta.</p>
-            </div>
-            <div class="d-flex gap-2">
-                {% if e_admin %}
-                <a href="/admin/usuarios" class="btn btn-sm btn-outline-warning fw-bold px-3 py-2" style="border-radius: 8px;">🛠️ Gerenciar Usuários</a>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('gerenciar_usuarios') }}" class="nav-item">
+            <span class="nav-icon">🛠️</span>
+            <span class="nav-text" style="color: #fb7185;">Administração</span>
+        </a>
+        {% endif %}
+        
+        <a href="{{ url_for('solicitacoes') }}" class="nav-item">
+            <span class="nav-icon">🔔</span>
+            <span class="nav-text">Solicitações 
+                {% if total_notificacoes > 0 %}
+                    <span class="badge-notif ms-1">{{ total_notificacoes }}</span>
                 {% endif %}
-                <a href="/logout" class="btn btn-sm btn-outline-danger fw-bold px-3 py-2" style="border-radius: 8px;">🚪 Sair</a>
+            </span>
+        </a>
+        
+        <div style="flex-grow: 1;"></div>
+        
+        <a href="{{ url_for('logout') }}" class="nav-item mb-4">
+            <span class="nav-icon">🚪</span>
+            <span class="nav-text">Sair</span>
+        </a>
+    </nav>
+
+
+    <main class="main-content">
+        
+        <div class="left-column">
+            <div class="mb-4">
+                <h1 class="fw-bold d-flex align-items-center gap-2">
+                    💰 Dashboard Financeiro
+                </h1>
+                <p class="text-muted mb-0">Bem-vindo, <span style="color: #38bdf8; font-weight: bold;">{{ usuario_logado }}</span></p>
             </div>
-        </div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} small py-2 border-0 mb-4" style="border-radius: 8px;">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} py-2" style="background-color: var(--card-bg); color: white; border-color: var(--border-color);">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
 
-        <div class="p-3 mb-4 d-flex justify-content-between align-middle" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px;">
-            <h4 class="mb-0 align-self-center" style="color: #c3b0ea; font-weight: 600;">
-                📅 Visualizando: <span style="color: #00e5ff;">{{ mes_nome }} / {{ ano_atual }}</span>
-            </h4>
-            
-            <div class="dropdown">
-                <button class="btn btn-sm text-white fw-bold px-3 py-2 btn-mes" type="button" data-bs-toggle="dropdown">🔍 Selecionar Mês</button>
-                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" style="background-color: #1c0f35; border: 1px solid #3d1d6d;">
-                    <li><a class="dropdown-item" href="/?mes=1&ano=2026">Janeiro</a></li>
-                    <li><a class="dropdown-item" href="/?mes=2&ano=2026">Fevereiro</a></li>
-                    <li><a class="dropdown-item" href="/?mes=3&ano=2026">Março</a></li>
-                    <li><a class="dropdown-item" href="/?mes=4&ano=2026">Abril</a></li>
-                    <li><a class="dropdown-item" href="/?mes=5&ano=2026">Maio</a></li>
-                    <li><a class="dropdown-item" href="/?mes=6&ano=2026">Junho</a></li>
-                    <li><a class="dropdown-item" href="/?mes=7&ano=2026">Julho</a></li>
-                    <li><a class="dropdown-item" href="/?mes=8&ano=2026">Agosto</a></li>
-                    <li><a class="dropdown-item" href="/?mes=9&ano=2026">Setembro</a></li>
-                    <li><a class="dropdown-item" href="/?mes=10&ano=2026">Outubro</a></li>
-                    <li><a class="dropdown-item" href="/?mes=11&ano=2026">Novembro</a></li>
-                    <li><a class="dropdown-item" href="/?mes=12&ano=2026">Dezembro</a></li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="row g-4">
-            <div class="col-md-9">
-                <div class="row g-3 mb-5">
-                    <div class="col-md-4">
-                        <div class="p-4 d-flex flex-column justify-content-center" style="background: linear-gradient(135deg, #27144d 0%, #110822 100%); border: 1px solid #3d1d6d; border-radius: 12px; min-height: 135px;">
-                            <span class="text-white-50 small fw-bold text-uppercase">Saldo Total Geral</span>
-                            <h2 class="fw-bold mt-2 mb-0" style="color: #e2bbfd;">R$ {{ "%.2f"|format(saldo_total) }}</h2>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="p-4" style="background: linear-gradient(135deg, #27144d 0%, #110822 100%); border: 1px solid #3d1d6d; border-radius: 12px; min-height: 135px;">
-                            <span class="text-white-50 small fw-bold text-uppercase">Meu Gasto Individual</span>
-                            <h2 class="fw-bold mt-2 mb-1" style="color: #ffca28;">R$ {{ "%.2f"|format(resumo_individuais) }}</h2>
-                            <div class="d-flex justify-content-between text-white-50 small border-top pt-2 mt-2" style="border-color: rgba(255,255,255,0.15) !important;">
-                                <span>Titular: <strong style="color: #ffffff;">{{ usuario_logado|capitalize }}</strong></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="p-4 d-flex flex-column justify-content-center" style="background: linear-gradient(135deg, #27144d 0%, #110822 100%); border: 1px solid #3d1d6d; border-radius: 12px; min-height: 135px;">
-                            <span class="text-white-50 small fw-bold text-uppercase">Gastos Partilhados Comigo</span>
-                            <h2 class="fw-bold mt-2 mb-0" style="color: #00e5ff;">R$ {{ "%.2f"|format(resumo_partilhados) }}</h2>
-                        </div>
+            <div class="row mb-2">
+                <div class="col-md-6">
+                    <div class="dashboard-card card-pago">
+                        <small class="text-white-50 fw-bold">TOTAL PAGO</small>
+                        <h4 class="mt-2 mb-0">R$ {{ "%.2f"|format(total_pago) }}</h4>
                     </div>
                 </div>
-
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <div class="p-4" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px; height: 100%;">
-                            <h5 class="fw-bold mb-4" style="color: #00e5ff;">📊 Transações Partilhadas Diretas</h5>
-                            <div class="table-responsive">
-                                <table class="table align-middle" style="color: white; margin-bottom: 0;">
-                                    <thead>
-                                        <tr>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px;">Descrição</th>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px;">Valor</th>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px; text-align: center;">Vínculo</th>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px; text-align: center;">Ação</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for transacao in transacoes_partilhadas %}
-                                        <tr>
-                                            <td style="background-color: #130924; color: #e0d5f0; border-bottom: 1px solid #22113b; padding: 12px;">
-                                                {{ transacao.descricao }}
-                                                {% if transacao.frequencia == 'Fixo' %}
-                                                    <span class="badge bg-secondary text-uppercase" style="font-size: 0.65rem; margin-left: 5px; opacity: 0.6;">Fixo</span>
-                                                {% endif %}
-                                            </td>
-                                            <td style="background-color: #130924; color: #00e5ff; border-bottom: 1px solid #22113b; padding: 12px; font-weight: 700;">R$ {{ "%.2f"|format(transacao.valor) }}</td>
-                                            <td style="background-color: #130924; border-bottom: 1px solid #22113b; padding: 12px; text-align: center;">
-                                                <span class="badge" style="background-color: #1c103a; border: 1px solid #00e5ff; color: #00e5ff; font-size: 0.75rem;">
-                                                    {{ transacao.tipo.replace('Partilhado (', '').replace(')', '') }}
-                                                </span>
-                                            </td>
-                                            <td style="background-color: #130924; border-bottom: 1px solid #22113b; padding: 12px; text-align: center;">
-                                                <a href="/deletar/{{ transacao.id }}" class="btn-deletar">×</a>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="p-4" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px; height: 100%;">
-                            <h5 class="fw-bold mb-4" style="color: #ffca28;">👤 Minhas Transações Individuais</h5>
-                            <div class="table-responsive">
-                                <table class="table align-middle" style="color: white; margin-bottom: 0;">
-                                    <thead>
-                                        <tr>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px;">Descrição</th>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px;">Valor</th>
-                                            <th style="background-color: #1c0e33; color: #b39ddb; border-bottom: 2px solid #3d1d6d; padding: 12px; text-align: center;">Ação</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for transacao in transacoes_individuais %}
-                                        <tr>
-                                            <td style="background-color: #130924; color: #e0d5f0; border-bottom: 1px solid #22113b; padding: 12px;">
-                                                {{ transacao.descricao }}
-                                                {% if transacao.frequencia == 'Fixo' %}
-                                                    <span class="badge bg-secondary text-uppercase" style="font-size: 0.65rem; margin-left: 5px; opacity: 0.6;">Fixo</span>
-                                                {% endif %}
-                                            </td>
-                                            <td style="background-color: #130924; color: #ffca28; border-bottom: 1px solid #22113b; padding: 12px; font-weight: 700;">R$ {{ "%.2f"|format(transacao.valor) }}</td>
-                                            <td style="background-color: #130924; border-bottom: 1px solid #22113b; padding: 12px; text-align: center;">
-                                                <a href="/deletar/{{ transacao.id }}" class="btn-deletar">×</a>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                <div class="col-md-6">
+                    <div class="dashboard-card card-apagar">
+                        <small class="text-white-50 fw-bold">TOTAL A PAGAR</small>
+                        <h4 class="mt-2 mb-0">R$ {{ "%.2f"|format(total_a_pagar) }}</h4>
                     </div>
                 </div>
             </div>
-            
-            <div class="col-md-3">
-                <div class="p-4" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px;">
-                    <h4 class="fw-bold mb-4" style="color: white; border-bottom: 1px solid #2a1545; padding-bottom: 10px;">➕ Novo Gasto</h4>
-                    <form action="/criar" method="POST">
-                        <div class="mb-3">
-                            <label for="descricao" class="form-label text-white-50 small fw-medium">Descrição</label>
-                            <input type="text" class="form-control" name="descricao" id="descricao" placeholder="Ex: Mercado..." required style="background-color: #1c0f35; border: 1px solid #3d1d6d; color: #ffffff; padding: 10px 12px; border-radius: 8px;">
-                        </div>
-                        <div class="mb-3">
-                            <label for="valor" class="form-label text-white-50 small fw-medium">Valor</label>
-                            <input type="number" step="0.01" class="form-control" name="valor" id="valor" placeholder="R$ 0,00" required style="background-color: #1c0f35; border: 1px solid #3d1d6d; color: #ffffff; padding: 10px 12px; border-radius: 8px;">
-                        </div>
-                        <div class="mb-3">
-                            <label for="categoria" class="form-label text-white-50 small fw-medium">Tipo de Gasto</label>
-                            <select class="form-select" name="categoria" id="categoria" required onchange="toggleParceiroField()" style="background-color: #1c0f35; border: 1px solid #3d1d6d; color: #ffffff; padding: 10px 12px; border-radius: 8px;">
-                                <option value="Individual">Individual</option>
-                                <option value="Partilhado">Partilhado com alguém</option>
-                            </select>
-                        </div>
 
-                        <div class="mb-3 d-none" id="campo-parceiro">
-                            <label for="parceiro_username" class="form-label text-warning small fw-bold">👤 Usuário do Parceiro</label>
-                            <input type="text" class="form-control" name="parceiro_username" id="parceiro_username" placeholder="Digite o usuário exato" style="background-color: #22123f; border: 1px solid #ffca28; color: #ffffff; padding: 10px 12px; border-radius: 8px;">
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="frequencia" class="form-label text-white-50 small fw-medium">Frequência</label>
-                            <select class="form-select" name="frequencia" id="frequencia" required style="background-color: #1c0f35; border: 1px solid #3d1d6d; color: #ffffff; padding: 10px 12px; border-radius: 8px;">
-                                <option value="Variavel">Variável</option>
-                                <option value="Fixo">Fixo</option>
-                            </select>
-                        </div>
-                        <div class="d-grid">
-                            <button type="submit" class="btn fw-bold py-2 text-white btn-salvar">Salvar Transação</button>
-                        </div>
-                    </form>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="dashboard-card h-100">
+                        <small class="text-white-50 fw-bold d-block mb-3">📊 CATEGORIAS DE GASTOS</small>
+                        <p class="text-muted small text-center my-4">
+                            Fixas: R$ {{ "%.2f"|format(cat_fixas) }}<br>
+                            Variáveis: R$ {{ "%.2f"|format(cat_variaveis) }}
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="dashboard-card h-100">
+                        <small class="text-white-50 fw-bold d-block mb-3">🗓️ PRÓXIMAS CONTAS A VENCER</small>
+                        {% if proximas %}
+                            <ul class="list-unstyled small">
+                            {% for p in proximas %}
+                                <li class="d-flex justify-content-between border-bottom border-secondary pb-2 mb-2">
+                                    <span>{{ p.descricao }}</span>
+                                    <span class="text-warning">{{ p.vencimento }} - R$ {{ "%.2f"|format(p.valor) }}</span>
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="text-muted small text-center my-4">Nenhuma conta fixa pendente de pagamento!</p>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+            <div class="dashboard-card mt-3">
+                <small class="text-white-50 fw-bold d-block mb-3">⏱️ ÚLTIMAS TRANSAÇÕES / HISTÓRICO RECENTE</small>
+                {% if historico %}
+                    <ul class="list-unstyled small mb-0">
+                    {% for h in historico %}
+                        <li class="d-flex justify-content-between mb-2">
+                            <span>{{ h.descricao }} ({{ h.frequencia }})</span>
+                            <span class="sample {% if h.pago %}text-success{% else %}text-danger{% endif %}">R$ {{ "%.2f"|format(h.valor) }}</span>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted small text-center my-3">Nenhuma transação efetuada até o momento.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="right-column">
+            <div class="dashboard-card">
+                <h5 class="fw-bold mb-4">➕ Novo Gasto</h5>
+                
+                <form action="{{ url_for('criar') }}" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label small text-white-50">Descrição</label>
+                        <input type="text" name="descricao" class="form-control" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small text-white-50">Valor</label>
+                        <input type="number" step="0.01" name="valor" class="form-control" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small text-white-50">Tipo de Gasto</label>
+                        <select name="categoria" class="form-select" id="tipoSelect" onchange="toggleParceiro()">
+                            <option value="Individual">Individual</option>
+                            <option value="Partilhado">Partilhado</option>
+                        </select>
+                    </div>
+
+                    <div id="divParceiro" style="display: none;" class="mb-3 p-3 border rounded border-secondary">
+                        <label class="form-label small text-white-50">Username do Parceiro</label>
+                        <input type="text" name="parceiro_username" class="form-control mb-2" placeholder="Ex: maria">
+                        <label class="form-label small text-white-50">Sua Porcentagem (%)</label>
+                        <input type="number" name="porcentagem_criador" class="form-control mb-2" value="50">
+                        <label class="form-label small text-white-50">Porcentagem Parceiro (%)</label>
+                        <input type="number" name="porcentagem_parceiro" class="form-control" value="50">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label small text-white-50">Frequência</label>
+                        <select name="frequencia" class="form-select" id="freqSelect" onchange="toggleVencimento()">
+                            <option value="Despesas Variáveis">Despesas Variáveis</option>
+                            <option value="Despesas Fixas">Despesas Fixas</option>
+                        </select>
+                    </div>
+
+                    <div id="divVencimento" style="display: none;" class="mb-4">
+                        <label class="form-label small text-white-50">Dia do Vencimento (Ex: Todo dia 10)</label>
+                        <input type="text" name="vencimento" class="form-control">
+                        <input type="hidden" name="obs_vencimento" value="">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-purple w-100 py-2">Salvar Transação</button>
+                </form>
+            </div>
+        </div>
+        
+    </main>
+
     <script>
-        function toggleParceiroField() {
-            var categoria = document.getElementById('categoria').value;
-            var campoParceiro = document.getElementById('campo-parceiro');
-            var inputParceiro = document.getElementById('parceiro_username');
-            if (categoria === 'Partilhado') {
-                campoParceiro.classList.remove('d-none');
-                inputParceiro.required = true;
-            } else {
-                campoParceiro.classList.add('d-none');
-                inputParceiro.required = false;
-                inputParceiro.value = '';
-            }
+        function toggleParceiro() {
+            var tipo = document.getElementById("tipoSelect").value;
+            document.getElementById("divParceiro").style.display = (tipo === "Partilhado") ? "block" : "none";
+        }
+        function toggleVencimento() {
+            var freq = document.getElementById("freqSelect").value;
+            document.getElementById("divVencimento").style.display = (freq === "Despesas Fixas") ? "block" : "none";
         }
     </script>
 </body>

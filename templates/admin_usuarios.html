@@ -17,7 +17,7 @@
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>🛠️ Gerenciador de Usuários (Administrativo)</h2>
-            <a href="/" class="btn btn-sm btn-secondary fw-bold px-3 py-2" style="border-radius: 8px; background-color: #27144d; border: 1px solid #3d1d6d;">Voltar ao Dashboard</a>
+            <a href="{{ url_for('home') }}" class="btn btn-sm btn-secondary fw-bold px-3 py-2" style="border-radius: 8px; background-color: #27144d; border: 1px solid #3d1d6d;">Voltar ao Dashboard</a>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -61,7 +61,11 @@
                                 <a href="/admin/bloquear/{{ user.id }}" class="btn btn-xs btn-sm btn-bloquear {% if user.is_active_user %}btn-outline-warning{% else %}btn-warning text-dark{% endif %} fw-bold py-1" style="border-radius: 6px;">
                                     {% if user.is_active_user %}Bloquear{% else %}Desbloquear{% endif %}
                                 </a>
-                                <a href="/admin/excluir/{{ user.id }}" class="btn btn-xs btn-sm btn-outline-danger btn-excluir-user fw-bold py-1" style="border-radius: 6px;" onclick="return confirm('Tem certeza absoluta que deseja excluir permanentemente o usuário {{ user.username|capitalize }}?');">Excluir</a>
+                                
+                                <form action="{{ url_for('gerenciar_usuarios') }}" method="POST" class="m-0 p-0" onsubmit="return confirm('Tem certeza absoluta que deseja excluir permanentemente o usuário {{ user.username|capitalize }}?');">
+                                    <input type="hidden" name="delete_user_id" value="{{ user.id }}">
+                                    <button type="submit" class="btn btn-xs btn-sm btn-outline-danger btn-excluir-user fw-bold py-1" style="border-radius: 6px;">Excluir</button>
+                                </form>
                             </div>
                             {% else %}
                             <span class="text-white-50 small">Conta Mestre Protegida</span>

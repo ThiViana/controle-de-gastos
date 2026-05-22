@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Solicitações Pendentes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body style="background-color: #0b0711; color: white; padding: 40px; font-family: 'Segoe UI', sans-serif;">
+    <div class="container" style="max-width: 900px;">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <h2>🔔 Central de Solicitações Compartilhadas</h2>
+            <a href="/" class="btn btn-secondary btn-sm px-3" style="background-color: #27144d; border: 1px solid #3d1d6d;">Voltar</a>
+        </div>
+
+        <div class="p-4 mb-4" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px;">
+            <h5 class="text-info fw-bold mb-3">➕ Solicitações para Novos Gastos Conjuntos</h5>
+            {% if criacoes %}
+            <div class="table-responsive">
+                <table class="table table-dark align-middle">
+                    <thead>
+                        <tr>
+                            <th>Descrição</th>
+                            <th>Valor Cheio</th>
+                            <th>Enviado por</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in criacoes %}
+                        <tr>
+                            <td>{{ item.gasto.descricao }} <span class="badge bg-secondary">{{ item.gasto.frequencia }}</span></td>
+                            <td class="text-warning">R$ {{ "%.2f"|format(item.gasto.valor) }}</td>
+                            <td><strong class="text-info">{{ item.nome_criador }}</strong></td>
+                            <td class="text-center">
+                                <a href="/solicitacao/criacao/{{ item.gasto.id }}/aceitar" class="btn btn-success btn-sm fw-bold me-2">✓ Aceitar</a>
+                                <a href="/solicitacao/criacao/{{ item.gasto.id }}/recusar" class="btn btn-danger btn-sm">× Recusar</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-white-50 small mb-0">Nenhum pedido de criação de despesa pendente.</p>
+            {% endif %}
+        </div>
+
+        <div class="p-4" style="background-color: #130924; border: 1px solid #261342; border-radius: 12px;">
+            <h5 class="text-danger fw-bold mb-3">⚠️ Solicitações de Exclusão de Gastos Existentes</h5>
+            {% if exclusoes %}
+            <div class="table-responsive">
+                <table class="table table-dark align-middle">
+                    <thead>
+                        <tr>
+                            <th>Descrição do Gasto</th>
+                            <th class="text-center">Confirmação Mútua</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in exclusoes %}
+                        <tr>
+                            <td>Um parceiro enviou um pedido para excluir uma transação conjunta deste painel.</td>
+                            <td class="text-center">
+                                <a href="/solicitacao/exclusao/{{ e.id }}/aceitar" class="btn btn-danger btn-sm me-2">🗑️ Confirmar Exclusão</a>
+                                <a href="/solicitacao/exclusao/{{ e.id }}/recusar" class="btn btn-outline-secondary btn-sm">Manter Gasto</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-white-50 small mb-0">Nenhum pedido de exclusão conjunta pendente.</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
