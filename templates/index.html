@@ -154,17 +154,26 @@
             border-radius: 50%;
         }
 
+        /* --- CONTEÚDO PRINCIPAL ALINHADO --- */
         .main-content {
             margin-left: 75px; 
             padding: 40px;
             width: calc(100% - 75px);
             display: flex;
             gap: 30px;
+            align-items: stretch; /* Força as colunas a terem a mesma altura */
             transition: all 0.3s ease;
         }
-        .left-column { flex: 1; }
-        .right-column { width: 350px; }
+        .left-column { 
+            flex: 1; 
+            display: flex;
+            flex-direction: column;
+        }
+        .right-column { 
+            width: 350px; 
+        }
 
+        /* --- CARDS --- */
         .dashboard-card {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
@@ -177,6 +186,15 @@
         .card-apagar { background-color: #3f1425; border-color: #5e1d35; }
         .card-apagar h4 { color: #fb7185; font-weight: bold; }
 
+        /* Estica o card de formulário para preencher toda a altura da coluna */
+        .card-form-full {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        /* --- FORMULÁRIO --- */
         .form-control, .form-select {
             background-color: #0b0711;
             border: 1px solid var(--border-color);
@@ -194,6 +212,7 @@
             font-weight: bold;
             border: none;
             transition: 0.2s;
+            margin-top: auto; /* Empurra o botão sempre para o final do card */
         }
         .btn-purple:hover {
             background-color: #7c3aed;
@@ -207,6 +226,7 @@
                 margin-left: 75px;
                 width: calc(100% - 75px);
                 gap: 15px;
+                align-items: initial;
             }
             .sidebar:hover { width: 75px; }
             .right-column { width: 100%; }
@@ -329,7 +349,7 @@
                 </div>
             </div>
 
-            <div class="row">
+            <div class="row mb-2">
                 <div class="col-md-6 col-12 mb-3 mb-md-0">
                     <div class="dashboard-card h-100 d-flex flex-column align-items-center justify-content-between">
                         <small class="text-white-50 fw-bold align-self-start mb-2">📊 CATEGORIAS DE GASTOS</small>
@@ -356,12 +376,28 @@
                     </div>
                 </div>
             </div>
+
+            <div class="dashboard-card mt-auto mb-0">
+                <small class="text-white-50 fw-bold d-block mb-3">⏱️ ÚLTIMAS TRANSAÇÕES / HISTÓRICO RECENTE</small>
+                {% if historico %}
+                    <ul class="list-unstyled small mb-0">
+                    {% for h in historico %}
+                        <li class="d-flex justify-content-between mb-2">
+                            <span>{{ h.descricao }} ({{ h.frequencia }})</span>
+                            <span class="{% if h.pago %}text-success{% else %}text-danger{% endif %}">R$ {{ "%.2f"|format(h.valor) }}</span>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted small text-center my-3">Nenhuma transação efetuada até o momento.</p>
+                {% endif %}
+            </div>
         </div>
 
         <div class="right-column">
-            <div class="dashboard-card">
+            <div class="dashboard-card card-form-full">
                 <h5 class="fw-bold mb-4">➕ Novo Gasto</h5>
-                <form action="{{ url_for('criar') }}" method="POST">
+                <form action="{{ url_for('criar') }}" method="POST" class="d-flex flex-column h-100">
                     <div class="mb-3">
                         <label class="form-label small text-white-50">Descrição</label>
                         <input type="text" name="descricao" class="form-control" required>
