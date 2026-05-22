@@ -26,22 +26,6 @@
             overflow-x: hidden;
         }
 
-        /* --- BOTÃO HAMBÚRGUER MOBILE --- */
-        .menu-toggle {
-            display: none;
-            position: fixed;
-            top: 15px;
-            left: 15px;
-            background-color: var(--sidebar-bg);
-            border: 1px solid var(--border-color);
-            color: white;
-            font-size: 1.5rem;
-            padding: 5px 12px;
-            border-radius: 8px;
-            z-index: 1100;
-            cursor: pointer;
-        }
-
         /* --- MENU LATERAL DINÂMICO --- */
         .sidebar {
             width: 75px;
@@ -51,14 +35,13 @@
             flex-direction: column;
             position: fixed;
             height: 100vh;
-            transition: width 0.3s ease, left 0.3s ease;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             overflow: hidden;
             white-space: nowrap;
             z-index: 1000;
-            left: 0;
         }
-        
-        /* Mantém o hover apenas para computadores */
+
+        /* COMPUTADOR: Expansão nativa por passar a seta (Hover) */
         @media (min-width: 992px) {
             .sidebar:hover {
                 width: 260px;
@@ -69,6 +52,17 @@
                 opacity: 1;
                 display: block;
             }
+        }
+
+        /* DISPOSITIVOS MÓVEIS OU SUPORTE A TOQUE: Expansão via Classe JavaScript */
+        .sidebar.expanded {
+            width: 260px !important;
+        }
+        .sidebar.expanded .nav-text,
+        .sidebar.expanded .user-name-text,
+        .sidebar.expanded .submenu {
+            opacity: 1 !important;
+            display: block !important;
         }
 
         .user-profile-header {
@@ -99,14 +93,7 @@
             color: white;
             opacity: 0;
             transition: opacity 0.2s ease;
-        }
-        
-        /* Controla a visibilidade quando expandido no clique/mobile */
-        .sidebar.expanded .user-name-text, 
-        .sidebar.expanded .nav-text,
-        .sidebar.expanded .submenu {
-            opacity: 1 !important;
-            display: block !important;
+            display: none;
         }
 
         .nav-item {
@@ -137,9 +124,10 @@
             margin-left: 10px;
             opacity: 0;
             transition: opacity 0.2s ease;
+            display: none;
         }
 
-        /* --- SUBMENU (FIXA, VARIÁVEL, RESUMO) --- */
+        /* --- SUBMENU PERFEITO (FIXA, VARIÁVEL, RESUMO) --- */
         .submenu {
             display: none;
             padding-left: 55px;
@@ -225,39 +213,22 @@
 
         /* --- RESPONSIVIDADE SMARTPHONE --- */
         @media (max-width: 991px) {
-            .menu-toggle {
-                display: block;
-            }
             .main-content {
                 flex-direction: column;
                 padding: 20px;
-                padding-top: 75px;
-                margin-left: 0;
-                width: 100%;
+                margin-left: 75px; /* Mantém o alinhamento perfeito com os ícones da barra lateral */
+                width: calc(100% - 75px);
                 gap: 15px;
             }
-            .sidebar {
-                left: -260px;
-                width: 260px;
-            }
-            .sidebar.expanded {
-                left: 0;
-            }
-            .sidebar .nav-text, .sidebar .user-name-text, .sidebar .submenu {
-                opacity: 0;
-                display: none;
-            }
-            .right-column {
-                width: 100%;
+            .sidebar:hover {
+                width: 75px; /* Desativa o hover nativo no mobile para evitar conflito de toque */
             }
         }
     </style>
 </head>
 <body>
 
-    <button class="menu-toggle" onclick="toggleSidebar(event)">☰</button>
-
-    <nav class="sidebar" id="appSidebar">
+    <nav class="sidebar" id="appSidebar" onclick="handleSidebarClick(event)">
         <div class="user-profile-header">
             {% if current_user.foto_perfil %}
                 <img src="{{ url_for('static', filename='uploads/' + current_user.foto_perfil) }}" class="avatar-small">
@@ -479,15 +450,18 @@
     </main>
 
     <script>
-        function toggleSidebar(event) {
-            event.stopPropagation();
-            document.getElementById("appSidebar").classList.toggle("expanded");
+        function handleSidebarClick(event) {
+            // Se estiver no mobile/tablet, o toque na barra lateral controla a expansão
+            if (window.innerWidth <= 991) {
+                event.stopPropagation();
+                document.getElementById("appSidebar").classList.toggle("expanded");
+            }
         }
 
+        // Remove a expansão se clicar em qualquer lugar fora da sidebar
         document.addEventListener("click", function(event) {
             var sidebar = document.getElementById("appSidebar");
-            var toggleBtn = document.querySelector(".menu-toggle");
-            if (!sidebar.contains(event.target) && event.target !== toggleBtn) {
+            if (!sidebar.contains(event.target)) {
                 sidebar.classList.remove("expanded");
             }
         });
