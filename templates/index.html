@@ -26,6 +26,22 @@
             overflow-x: hidden;
         }
 
+        /* --- BOTÃO HAMBÚRGUER MOBILE --- */
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            background-color: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            color: white;
+            font-size: 1.5rem;
+            padding: 5px 12px;
+            border-radius: 8px;
+            z-index: 1100;
+            cursor: pointer;
+        }
+
         /* --- MENU LATERAL DINÂMICO --- */
         .sidebar {
             width: 75px;
@@ -35,14 +51,21 @@
             flex-direction: column;
             position: fixed;
             height: 100vh;
-            transition: width 0.3s ease;
+            transition: width 0.3s ease, left 0.3s ease;
             overflow: hidden;
             white-space: nowrap;
             z-index: 1000;
+            left: 0;
         }
         
-        .sidebar:hover {
-            width: 260px;
+        /* Mantém o hover apenas para computadores */
+        @media (min-width: 992px) {
+            .sidebar:hover {
+                width: 260px;
+            }
+            .sidebar:hover .nav-text, .sidebar:hover .user-name-text {
+                opacity: 1;
+            }
         }
 
         .user-profile-header {
@@ -59,13 +82,13 @@
             min-width: 38px;
             border-radius: 50%;
             border: 2px solid var(--primary-purple);
-            display: flex !important; /* Força o display flex para as iniciais aparecerem sempre */
+            display: flex !important;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             color: white;
             background-color: var(--bg-color);
-            object-fit: cover; /* Impede distorções na imagem de perfil */
+            object-fit: cover;
         }
         .user-name-text {
             margin-left: 15px;
@@ -74,8 +97,11 @@
             opacity: 0;
             transition: opacity 0.2s ease;
         }
-        .sidebar:hover .user-name-text {
-            opacity: 1;
+        
+        /* Controla a visibilidade quando expandido por clique */
+        .sidebar.expanded .user-name-text, .sidebar.expanded .nav-text {
+            opacity: 1 !important;
+            display: inline-block !important;
         }
 
         .nav-item {
@@ -106,9 +132,6 @@
             margin-left: 10px;
             opacity: 0;
             transition: opacity 0.2s ease;
-        }
-        .sidebar:hover .nav-text {
-            opacity: 1;
         }
         .badge-notif {
             background-color: #dc3545;
@@ -176,20 +199,26 @@
 
         /* --- RESPONSIVIDADE SMARTPHONE --- */
         @media (max-width: 991px) {
+            .menu-toggle {
+                display: block; /* Ativa botão hambúrguer */
+            }
             .main-content {
                 flex-direction: column;
                 padding: 20px;
-                margin-left: 60px;
-                width: calc(100% - 60px);
+                padding-top: 75px; /* Abre espaço para o cabeçalho fixo */
+                margin-left: 0;
+                width: 100%;
                 gap: 15px;
             }
             .sidebar {
-                width: 60px;
+                left: -260px; /* Esconde o menu completamente para fora da tela */
+                width: 260px; /* Abre já no tamanho completo */
             }
-            .sidebar:hover {
-                width: 60px;
+            .sidebar.expanded {
+                left: 0; /* Desloca o menu para dentro da tela ao clicar */
             }
-            .sidebar:hover .nav-text, .sidebar:hover .user-name-text {
+            .sidebar .nav-text, .sidebar .user-name-text {
+                opacity: 0;
                 display: none;
             }
             .right-column {
@@ -200,7 +229,9 @@
 </head>
 <body>
 
-    <nav class="sidebar">
+    <button class="menu-toggle" onclick="toggleSidebar(event)">☰</button>
+
+    <nav class="sidebar" id="appSidebar">
         <div class="user-profile-header">
             {% if current_user.foto_perfil %}
                 <img src="{{ url_for('static', filename='uploads/' + current_user.foto_perfil) }}" class="avatar-small">
@@ -259,7 +290,7 @@
                     <h1 class="fw-bold d-flex align-items-center gap-2 mb-0">
                         💰 Dashboard Financeiro
                     </h1>
-                    <p class="text-muted mb-0">Bem-vindo, <span style="color: #38bdf8; font-weight: bold;">{{ usuario_logado }}</span></p>
+                    <p class="text-white-50 mb-0">Bem-vindo, <span style="color: #38bdf8; font-weight: bold;">{{ usuario_logado }}</span></p>
                 </div>
                 
                 <div>
@@ -409,6 +440,20 @@
     </main>
 
     <script>
+        function toggleSidebar(event) {
+            event.stopPropagation();
+            document.getElementById("appSidebar").classList.toggle("expanded");
+        }
+
+        // Fecha o menu automaticamente se o usuário tocar fora dele
+        document.addEventListener("click", function(event) {
+            var sidebar = document.getElementById("appSidebar");
+            var toggleBtn = document.querySelector(".menu-toggle");
+            if (!sidebar.contains(event.target) && event.target !== toggleBtn) {
+                sidebar.classList.remove("expanded");
+            }
+        });
+
         function toggleParceiro() {
             var tipo = document.getElementById("tipoSelect").value;
             document.getElementById("divParceiro").style.display = (tipo === "Partilhado") ? "block" : "none";
@@ -418,10 +463,8 @@
             document.getElementById("divVencimento").style.display = (freq === "Despesas Fixas") ? "block" : "none";
         }
 
-        // MOTOR DO GRÁFICO PIZZA (CHART.JS)
         document.addEventListener("DOMContentLoaded", function() {
             var ctx = document.getElementById('graficoCategorias').getContext('2d');
-            
             var fixas = parseFloat("{{ cat_fixas }}") || 0;
             var variaveis = parseFloat("{{ cat_variaveis }}") || 0;
 
