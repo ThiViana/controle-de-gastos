@@ -59,7 +59,7 @@
             min-width: 38px;
             border-radius: 50%;
             border: 2px solid var(--primary-purple);
-            display: flex;
+            display: flex !important; /* Força o display flex para as iniciais aparecerem sempre */
             align-items: center;
             justify-content: center;
             font-weight: bold;
@@ -173,14 +173,12 @@
             transform: translateY(-2px);
         }
 
-        /* ========================================== */
-        /* REGRAS DE RESPONSIVIDADE PARA SMARTPHONES  */
-        /* ========================================== */
+        /* --- RESPONSIVIDADE SMARTPHONE --- */
         @media (max-width: 991px) {
             .main-content {
-                flex-direction: column; /* Joga a coluna da direita para baixo */
+                flex-direction: column;
                 padding: 20px;
-                margin-left: 60px; /* Reduz espaço por causa da sidebar comprimida */
+                margin-left: 60px;
                 width: calc(100% - 60px);
                 gap: 15px;
             }
@@ -188,13 +186,13 @@
                 width: 60px;
             }
             .sidebar:hover {
-                width: 60px; /* Desativa a expansão no mobile para não cobrir o conteúdo */
+                width: 60px;
             }
             .sidebar:hover .nav-text, .sidebar:hover .user-name-text {
-                display: none; /* Mantém apenas os ícones visíveis no celular */
+                display: none;
             }
             .right-column {
-                width: 100%; /* O formulário ganha largura total embaixo */
+                width: 100%;
             }
         }
     </style>
@@ -251,11 +249,30 @@
     <main class="main-content">
         
         <div class="left-column">
-            <div class="mb-4">
-                <h1 class="fw-bold d-flex align-items-center gap-2">
-                    💰 Dashboard Financeiro
-                </h1>
-                <p class="text-muted mb-0">Bem-vindo, <span style="color: #38bdf8; font-weight: bold;">{{ usuario_logado }}</span></p>
+            <div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h1 class="fw-bold d-flex align-items-center gap-2 mb-0">
+                        💰 Dashboard Financeiro
+                    </h1>
+                    <p class="text-muted mb-0">Bem-vindo, <span style="color: #38bdf8; font-weight: bold;">{{ usuario_logado }}</span></p>
+                </div>
+                
+                <div>
+                    <select class="form-select bg-dark text-white border-secondary" style="min-width: 160px;" onchange="location = this.value;">
+                        <option value="?mes=1" {% if mes_selecionado == 1 %}selected{% endif %}>Janeiro</option>
+                        <option value="?mes=2" {% if mes_selecionado == 2 %}selected{% endif %}>Fevereiro</option>
+                        <option value="?mes=3" {% if mes_selecionado == 3 %}selected{% endif %}>Março</option>
+                        <option value="?mes=4" {% if mes_selecionado == 4 %}selected{% endif %}>Abril</option>
+                        <option value="?mes=5" {% if mes_selecionado == 5 %}selected{% endif %}>Maio</option>
+                        <option value="?mes=6" {% if mes_selecionado == 6 %}selected{% endif %}>Junho</option>
+                        <option value="?mes=7" {% if mes_selecionado == 7 %}selected{% endif %}>Julho</option>
+                        <option value="?mes=8" {% if mes_selecionado == 8 %}selected{% endif %}>Agosto</option>
+                        <option value="?mes=9" {% if mes_selecionado == 9 %}selected{% endif %}>Setembro</option>
+                        <option value="?mes=10" {% if mes_selecionado == 10 %}selected{% endif %}>Outubro</option>
+                        <option value="?mes=11" {% if mes_selecionado == 11 %}selected{% endif %}>Novembro</option>
+                        <option value="?mes=12" {% if mes_selecionado == 12 %}selected{% endif %}>Dezembro</option>
+                    </select>
+                </div>
             </div>
 
             {% with messages = get_flashed_messages(with_categories=true) %}

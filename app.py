@@ -1,10 +1,11 @@
-import os
+import os, calendar
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timezone
+
 
 app = Flask(__name__)
 
@@ -194,66 +195,81 @@ def alternar_bloqueio(id):
 @app.route('/')
 @login_required
 def home():
-    hoje = datetime.now(timezone.utc)
-    mes_selecionado = request.args.get('mes', default=hoje.month, type=int)
-    ano_selecionado = request.args.get('ano', default=hoje.year, type=int)
+    # Captura o mês selecionado pelo usuário (padrão é o mês atual)
+    mes_atual = datetime.now(timezone.utc).date().month
+    mes_selecionado = request.args.get('mes', default=mes_atual, type=int)
+    ano_atual = datetime.now(timezone.utc).date().year
 
-    todas_as_transacoes = Transacao.query.all()
-    transacoes_reais_do_mes = [t for t in todas_as_transacoes if t.data.month == mes_selecionado and t.data.year == ano_selecionado and t.status_gasto == 'Aprovado']
+    transacoes = Transacao.query.filter_by(status_gasto='Aprovado').all()
+    
+    total_pago = 0.0
+    total_a_pagar = 0.0
+    cat_fixas = 0.0
+    cat_variaveis = 0.0
+    proximas = []
+    historico = []
 
-    total_pago, total_a_pagar = 0.0, 0.0
-    cat_fixas, cat_variaveis = 0.0, 0.0
-    historico_recente, proximas_contas = [], []
-
-    for t in transacoes_reais_do_mes:
-        valor_meu = 0.0
+    for t in transacoes:
         pertence = False
+        valor_meu = 0.0
+        
+        # Filtra pela data (se for variável, vê o mês. Se for fixa, ela sempre entra no mês)
+        no_mes_correto = (t.data.month == mes_selecionado and t.data.year == ano_atual) or (t.frequencia == 'Despesas Fixas')
 
-        if t.tipo == 'Individual' and t.usuario_id == current_user.id:
-            valor_meu = t.valor
-            pertence = True
-        elif 'Partilhado (' in t.tipo:
-            conteudo = t.tipo.replace('Partilhado (', '').replace(')', '')
-            try:
-                criador, parceiro = [n.strip().lower() for n in conteudo.split('->')]
-            except:
-                continue
+        if no_mes_correto:
+            if t.tipo == 'Individual' and t.usuario_id == current_user.id:
+                valor_meu = t.valor
+                pertence = True
+            elif 'Partilhado (' in t.tipo:
+                conteudo = t.tipo.replace('Partilhado (', '').replace(')', '')
+                try:
+                    criador, parceiro = [n.strip().lower() for n in conteudo.split('->')]
+                    if current_user.username.lower() == criador:
+                        valor_meu = t.valor * (t.porcentagem_criador / 100)
+                        pertence = True
+                    elif current_user.username.lower() == parceiro:
+                        valor_meu = t.valor * (t.porcentagem_parceiro / 100)
+                        pertence = True
+                except: continue
             
-            # Ajuste de validação: ignorando maiúsculas e minúsculas
-            if current_user.username.lower() == criador:
-                valor_meu = t.valor * ((t.porcentagem_criador or 50.0) / 100)
-                pertence = True
-            elif current_user.username.lower() == parceiro:
-                valor_meu = t.valor * ((t.porcentagem_parceiro or 50.0) / 100)
-                pertence = True
+            if pertence:
+                # Alimenta o Histórico Recente
+                historico.append({
+                    'descricao': t.descricao,
+                    'frequencia': t.frequencia,
+                    'valor': valor_meu,
+                    'pago': t.pago
+                })
 
-        if pertence:
-            if t.pago:
-                total_pago += valor_meu
-            else:
-                total_a_pagar += valor_meu
+                # Separa os totais de pagos e pendentes
+                if t.pago:
+                    total_pago += valor_meu
+                else:
+                    total_a_pagar += valor_meu
+                    # Se for conta fixa pendente, vai para "Próximas Contas"
+                    if t.frequencia == 'Despesas Fixas':
+                        proximas.append({
+                            'descricao': t.descricao,
+                            'vencimento': t.parceiro_username if t.parceiro_username else 'Mensal', # usando campo pra guardar vencimento temporariamente se aplicável
+                            'valor': valor_meu
+                        })
+
+                # Alimenta o Gráfico de Pizza
                 if t.frequencia == 'Despesas Fixas':
-                    proximas_contas.append({'descricao': t.descricao, 'valor': valor_meu, 'vencimento': t.vencimento or 'Sem data'})
-            
-            if t.frequencia == 'Despesas Fixas': cat_fixas += valor_meu
-            else: cat_variaveis += valor_meu
+                    cat_fixas += valor_meu
+                else:
+                    cat_variaveis += valor_meu
 
-            historico_recente.append(t)
-
-    historico_recente = sorted(historico_recente, key=lambda x: x.id, reverse=True)[:5]
-    proximas_contas = sorted(proximas_contas, key=lambda x: x['vencimento'])[:5]
-
-    nomes_meses = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
-    nome_boas_vindas = current_user.nome_exibicao if current_user.nome_exibicao else current_user.username.capitalize()
-
-    return render_template(
-        'index.html', total_pago=total_pago, total_a_pagar=total_a_pagar,
-        cat_fixas=cat_fixas, cat_variaveis=cat_variaveis,
-        historico=historico_recente, proximas=proximas_contas,
-        mes_nome=nomes_meses[mes_selecionado], mes_atual=mes_selecionado, ano_atual=ano_selecionado,
-        usuario_logado=nome_boas_vindas, total_notificacoes=obter_contadores_notificacoes()
-    )
-
+    # Passa as variáveis do usuário explicitamente para não sumirem no template
+    return render_template('index.html', 
+                           total_pago=total_pago, 
+                           total_a_pagar=total_a_pagar,
+                           cat_fixas=cat_fixas, 
+                           cat_variaveis=cat_variaveis,
+                           proximas=proximas[:5], # limita a 5 itens
+                           historico=historico[:5],
+                           usuario_logado=current_user.username.capitalize(),
+                           mes_selecionado=mes_selecionado)
 @app.route('/despesas/<string:escopo>/<string:frequencia>')
 @login_required
 def listar_despesas(escopo, frequencia):
