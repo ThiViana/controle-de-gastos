@@ -65,6 +65,7 @@
             font-weight: bold;
             color: white;
             background-color: var(--bg-color);
+            object-fit: cover; /* Impede distorções na imagem de perfil */
         }
         .user-name-text {
             margin-left: 15px;
@@ -201,7 +202,11 @@
 
     <nav class="sidebar">
         <div class="user-profile-header">
-            <div class="avatar-small">{{ current_user.username[0]|upper }}</div>
+            {% if current_user.foto_perfil %}
+                <img src="{{ url_for('static', filename='uploads/' + current_user.foto_perfil) }}" class="avatar-small">
+            {% else %}
+                <div class="avatar-small">{{ current_user.username[0]|upper }}</div>
+            {% endif %}
             <div class="user-name-text">{{ current_user.username|capitalize }}</div>
         </div>
 
